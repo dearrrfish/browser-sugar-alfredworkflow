@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.dearrrfish.browser-switcher-alfredworkflow</string>
+	<key>category</key>
+	<string>Shortcuts</string>
+	<key>connections</key>
+	<dict>
+		<key>ADFE82F8-C295-41DF-936C-0B5B2FE8FE32</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E8A11764-A29E-4551-9AC2-A42C6EAF6355</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+			</dict>
+		</array>
+		<key>DA6232F9-20D3-4D79-85E1-876449597D77</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>ADFE82F8-C295-41DF-936C-0B5B2FE8FE32</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>dearrrfish</string>
+	<key>description</key>
+	<string>Switch current active tab between browsers</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Browser Switcher</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>68</integer>
+				<key>script</key>
+				<string>set option to "{query}"tell application "System Events" to set frontApp to name of first process whose frontmost is trueif (frontApp = "Safari") or (frontApp = "Webkit") then	set targetApp to "Google Chrome"	using terms from application "Safari"		try			tell application frontApp to set tabUrl to URL of front document			tell application frontApp to set tabTitle to name of front document			get tabUrl						-- comment this line if you don't want to validate url			validateUrl(tabUrl)					on error			return "No valid url of active tab in Safari."					end try				if option is not equal to "clone" then			tell application frontApp to close current tab of window 1		end if			end using terms from		else if (frontApp = "Google Chrome") or (frontApp = "Google Chrome Canary") or (frontApp = "Chromium") then	set targetApp to "Safari"	using terms from application "Google Chrome"		try			tell application frontApp to set tabUrl to URL of active tab of front window			tell application frontApp to set tabTitle to title of active tab of front window			get tabUrl						-- comment this line if you don't want to validate url			validateUrl(tabUrl)					on error			return "No valid url of active tab in Goolge Chrome."					end try				if option is not equal to "clone" then			tell application frontApp to close active tab of front window		end if			end using terms from	else	return "No active browser window or target browser is not supported."	end ifopenUrl(tabUrl, targetApp)set success to "Switched tab [ " &amp; tabTitle &amp; " ] to " &amp; targetAppreturn successon openUrl(_url, _target)	tell application _target		if it is not running then			activate		end if				open location _url		activate			end tellend openUrlon validateUrl(_url)	set commandString to "echo \"" &amp; _url &amp; "\" | sed 's/http/*VALID_URL*(&amp;)/'" as string	set sedResult to do shell script commandString	if sedResult does not start with "*VALID_URL*" then		error "url validation failed." &amp; sedResult &amp; " | " &amp; _url &amp; " | " &amp; commandString	end ifend validateUrl</string>
+				<key>type</key>
+				<integer>6</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>ADFE82F8-C295-41DF-936C-0B5B2FE8FE32</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>output</key>
+				<integer>0</integer>
+				<key>removeextension</key>
+				<false/>
+				<key>sticky</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Browser Switcher</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>E8A11764-A29E-4551-9AC2-A42C6EAF6355</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>bs</string>
+				<key>text</key>
+				<string>Switch to another browser to open current tab.</string>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>DA6232F9-20D3-4D79-85E1-876449597D77</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>ver: 0.1</string>
+	<key>uidata</key>
+	<dict>
+		<key>ADFE82F8-C295-41DF-936C-0B5B2FE8FE32</key>
+		<dict>
+			<key>ypos</key>
+			<real>10</real>
+		</dict>
+		<key>DA6232F9-20D3-4D79-85E1-876449597D77</key>
+		<dict>
+			<key>ypos</key>
+			<real>10</real>
+		</dict>
+		<key>E8A11764-A29E-4551-9AC2-A42C6EAF6355</key>
+		<dict>
+			<key>ypos</key>
+			<real>10</real>
+		</dict>
+	</dict>
+	<key>webaddress</key>
+	<string>https://github.com/dearrrfish/browser-switcher-alfredworkflow</string>
+</dict>
+</plist>
