@@ -72,7 +72,7 @@ function browserSwitch({clone, dedupe, reverse}) {
     error = openUrl(url, targetApp, { dedupe: dedupe })
     if (error) { resp.error = error; return resp }
 
-    resp.success = `${resp.from} -> ${resp.to}:\n<<${resp.title}>>`
+    resp.success = `${resp.from} -> ${resp.to} | ${resp.title}`
     return resp
 }
 
@@ -246,12 +246,8 @@ function getAppData(appName = frontmostApp(), {selection = false} = {}) {
             data.title = activeTab.title()
 
             if (selection) {
-                // Chrome has `copySelection` method of tab
-                const clipboardBackup = theClipboard()
-                activeTab.copySelection()
-                delay(0.1)
-                data.selection = theClipboard()
-                theClipboard(clipboardBackup)
+                // do javascript trick to get selection text in Chrome tab
+                data.selection = activeTab.execute({ javascript: "('' + getSelection())" })
             }
         }
         else {
@@ -263,8 +259,9 @@ function getAppData(appName = frontmostApp(), {selection = false} = {}) {
                 keystroke('c', ['command'])
                 delay(0.1)
                 data.selection = theClipboard()
-                //delay(0.1)
-                theClipboard(clipboardBackup)
+                // TODO better way to detect selection over this buggy workaround
+                if (data.selection === clipboardBackup) { data.selection = null }
+                else { theClipboard(clipboardBackup) }
             }
         }
     }

@@ -5,7 +5,7 @@
 	<key>bundleid</key>
 	<string>com.dearrrfish.browser-switcher-alfredworkflow</string>
 	<key>category</key>
-	<string>Shortcuts</string>
+	<string>Tools</string>
 	<key>connections</key>
 	<dict>
 		<key>1528452E-9509-4AD5-9AB2-EA025ECD69B3</key>
@@ -229,8 +229,6 @@
 				<integer>0</integer>
 				<key>hotmod</key>
 				<integer>0</integer>
-				<key>hotstring</key>
-				<string></string>
 				<key>leftcursor</key>
 				<false/>
 				<key>modsmode</key>
@@ -402,7 +400,7 @@
 		</dict>
 	</array>
 	<key>readme</key>
-	<string>ver: 0.2</string>
+	<string>ver: 0.2.2</string>
 	<key>uidata</key>
 	<dict>
 		<key>1528452E-9509-4AD5-9AB2-EA025ECD69B3</key>
