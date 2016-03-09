@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/.bin/babel src/main.js -o dist/main.js && ./node_modules/.bin/uglifyjs -c -m -o dist/main.js -- dist/main.js"
+    "build": "./node_modules/.bin/babel src/main.js -o dist/main.js && ./node_modules/.bin/uglifyjs -c -m -o dist/main.js -- dist/main.js",
+    "make": "./node_modules/.bin/babel src/main.js -o dist/main.js"
   },
   "repository": {
     "type": "git",

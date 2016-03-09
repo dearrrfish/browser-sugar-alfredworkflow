@@ -47,12 +47,13 @@ function browserSwitch({clone, dedupe, reverse}) {
 
     let frontApp = frontmostApp()
     let targetApp = null
-    if (SAFARI_LIST.indexOf(frontApp) !== -1) {
+    if (isSafari(frontApp)) {
         targetApp = 'Google Chrome'
-    } else if (CHROME_LIST.indexOf(frontApp) !== -1) {
+    } else if (isChrome(frontApp)) {
         targetApp = 'Safari'
     } else {
-        return 'Frontmost application is not in list of supported browsers.'
+        resp.error = `Frontmost application ${frontApp} is not in list of supported browsers.`
+        return resp
     }
 
     if (reverse) { [frontApp, targetApp] = [targetApp, frontApp] }
@@ -228,22 +229,18 @@ function getAppData(appName = frontmostApp(), {selection = false} = {}) {
     try { app = Application(appName) }
     catch (err) { data.error = `No such application - ${appName}`; return data }
 
-    if (SAFARI_LIST.indexOf(appName) !== -1) {
-        try {
-            const currentTab = app.windows[0].currentTab()
-            data.url = currentTab.url()
-            data.title = currentTab.name()
+    try {
+        if (isSafari(appName)) {
+            const currentDoc = app.windows[0].document()
+            data.url = currentDoc.url()
+            data.title = currentDoc.name()
 
             if (selection) {
                 // do javascript trick to get selection text in Safari tab
-                data.selection = app.doJavaScript("('' + getSelection())", { in: currentTab })
+                data.selection = app.doJavaScript("('' + getSelection())", { in: currentDoc })
             }
-
         }
-        catch (err) { data.error = err }
-    }
-    else if (CHROME_LIST.indexOf(appName) !== -1) {
-        try {
+        else if (isChrome(appName)) {
             const activeTab = app.windows[0].activeTab()
             data.url = activeTab.url()
             data.title = activeTab.title()
@@ -256,13 +253,9 @@ function getAppData(appName = frontmostApp(), {selection = false} = {}) {
                 data.selection = theClipboard()
                 theClipboard(clipboardBackup)
             }
-
         }
-        catch (err) { data.error = err }
-    }
-    else {
-        try {
-            data.title = (app.windows[0] && app.windows[0].name()) || app.name()
+        else {
+            data.title = (app.windows.length && app.windows[0].name()) || app.name()
 
             if (selection) {
                 // call keystroke `cmd + c` to copy text
@@ -274,7 +267,10 @@ function getAppData(appName = frontmostApp(), {selection = false} = {}) {
                 theClipboard(clipboardBackup)
             }
         }
-        catch (err) { data.error = err }
+    }
+    catch (err) {
+        console.log(err)
+        data.error = `Failed to get data of application ${appName}`
     }
 
     return data
@@ -288,11 +284,8 @@ function closeCurrentTab(appName = frontmostApp()) {
 
     try {
         const win = app.windows[0]
-        if (SAFARI_LIST.indexOf(appName) !== -1) { app.close(win.currentTab()) }
-        else if (CHROME_LIST.indexOf(appName) !== -1) { app.close(win.activeTab()) }
-        //const tab = (win.currentTab && win.currentTab()) ||
-                    //(win.activeTab && win.activeTab())
-        //app.close(tab)
+        if (isSafari(appName)) { app.close(win.currentTab()) }
+        else if (isChrome(appName)) { app.close(win.activeTab()) }
     }
     catch (err) {
         return `No tabs of current window of application - ${appName}`
@@ -304,10 +297,7 @@ function closeCurrentTab(appName = frontmostApp()) {
 
 function openUrl(url, target, { activate = true, dedupe = false, newTab = true, background = false } = {}) {
     let app = null
-
-    if (SAFARI_LIST.concat(CHROME_LIST).indexOf(target) === -1) {
-        target = getDefaultBrowser()
-    }
+    if (!isSafari(target) && !isChrome(target)) { target = getDefaultBrowser() }
 
     try { app = getApp(target, activate) }
     catch (err) {
@@ -317,7 +307,8 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
         return null
     }
 
-    const windows = app.windows()
+    let windows = app.windows()
+    if (isSafari(target)) { windows = windows.filter(w => w.document() !== undefined) }
 
     let exists = false
     if (dedupe) {
@@ -340,9 +331,17 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
 
     }
 
-    // open in front window by default
-    exists = exists || [windows[0]]
+    // create new window if no valid ones
+    if (!windows.length /* & !exists */) {
+        if (isSafari(target)) { app.Document().make() }
+        else { app.Window().make() }
+        app.windows[0].tabs[0].url = url
+        return null
+    }
+
+    exists = exists || [app.windows[0]]
     let [win, tab, tabIndex] = exists
+    win = win || windows[0]
 
     if (!tab) {
         if (newTab || !win.tabs().length ) {
@@ -358,8 +357,8 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
     if (!tab) { return 'browser not supported' }
 
     if (!background) {
-        if (SAFARI_LIST.indexOf(target) !== -1) { win.currentTab = tab }
-        else if (CHROME_LIST.indexOf(target) !== -1 && tabIndex) { win.activeTabIndex = tabIndex }
+        if (isSafari(target)) { win.currentTab = tab }
+        else if (isChrome(target) && tabIndex) { win.activeTabIndex = tabIndex }
     }
 
     // always bring window to front within app
@@ -392,4 +391,7 @@ function validateUrl(str, debug) {
     return null
 }
 
+
+function isSafari(name) { return SAFARI_LIST.indexOf(name) !== -1 }
+function isChrome(name) { return CHROME_LIST.indexOf(name) !== -1 }
 
