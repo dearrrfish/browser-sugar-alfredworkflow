@@ -111,7 +111,7 @@ function openLink({ dedupe }) {
     const frontApp = frontmostApp()
     const text = getAppData(frontApp, { selection: true }).selection || theClipboard()
 
-    let url = validateUrl(text, true)
+    let url = validateUrl(text)
     if (!url) { resp.error = 'No valid url was detected.'; return resp }
 
     let error = openUrl(url, frontApp, { dedupe: dedupe })
@@ -207,7 +207,7 @@ function theClipboard(sth) {
 function keystroke(key, modifiers = []) {
     const SystemEvents = Application('System Events')
     const using = modifiers.map(modifier => `${modifier} down`)
-    console.log ('keystroke: ', key, using)
+    //console.log ('keystroke: ', key, using)
     if (using.length === 0) {
         SystemEvents.keystroke(key)
     }
@@ -336,9 +336,8 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
         return null
     }
 
-    exists = exists || [app.windows[0]]
+    exists = exists || [windows[0]]
     let [win, tab, tabIndex] = exists
-    win = win || windows[0]
 
     if (!tab) {
         if (newTab || !win.tabs().length ) {
