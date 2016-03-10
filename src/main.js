@@ -1,128 +1,74 @@
 
-const ACTION_SHORTS = {
-    sw: 'switch',
-    cp: 'copy',
-    op: 'open',
-    ss: 'stash'
-}
-
-const SAFARI_LIST = ['Safari', 'Webkit']
-const CHROME_LIST = ['Google Chrome', 'Google Chrome Canary', 'Chromium']
-
 // `run` applet
 function run(argv) {
+    if (argv === false) { return }
     argv = argv.join(' ')
     const actions = parseArgv(argv)
-
     console.log (JSON.stringify(actions))
-    const resp = {success: [], error: null}
-    actions.some(({ name, options }) => {
-        let r = {}
-        switch (name) {
-            case 'switch': r = browserSwitch(options); break
-            case 'copy': r = copyData(options); break
-            case 'open': r = openLink(options); break
-            // case 'stash': break;
-            default: r.error = `Unknown action - [${name}]`
-        }
 
-        if (r.error) { resp.error = r.error; return true }
-        else { resp.success.push(r.success); return false }
+    let resp = ''
+    actions.every(([ name, options ]) => {
+        try {
+            switch (name) {
+                case 'switch': resp = browserSwitch(options); break;
+                case 'copy'  : resp = copyData(options); break;
+                case 'open'  : resp = openLink(options); break;
+                //case 'stash' : resp = stashTabs(options); break;
+                default: resp = `Unknown action - ${name}`; return false;
+            }
+            return true
+        }
+        catch (err) {
+            console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+            resp = err.message || err
+            return false
+        }
     })
 
-    return resp.error || resp.success.join('\n')
+    return resp
 }
 
+// ================================================================================================
 
 function browserSwitch({clone, dedupe, reverse}) {
-    const resp = {
-        from: null,
-        to: null,
-        url: null,
-        title: null,
-        success: null,
-        error: null,
-        options: [clone, dedupe, reverse]
-    }
+    let front = frontmostApp(),
+        target = null
 
-    let frontApp = frontmostApp()
-    let targetApp = null
-    if (isSafari(frontApp)) {
-        targetApp = 'Google Chrome'
-    } else if (isChrome(frontApp)) {
-        targetApp = 'Safari'
-    } else {
-        resp.error = `Frontmost application ${frontApp} is not in list of supported browsers.`
-        return resp
-    }
+    if (isSafari(front)) { target = CHROME_LIST[0] }
+    else if (isChrome(front)) { target = SAFARI_LIST[0] }
+    else { throw new Error(`${front} is not supported browser.`); return }
 
-    if (reverse) { [frontApp, targetApp] = [targetApp, frontApp] }
-    Object.assign(resp, { from: frontApp, to: targetApp })
+    if (reverse) { [front, target] = [target, front] }
 
-    let {url, title, error} = getAppData(frontApp)
-    Object.assign(resp, { url: url, title: title, error: error })
-    if (error) { resp.error = error; return resp }
+    let {url, title} = getAppData(front, ['url', 'title'])
+    openUrl(url, target, { dedupe: dedupe })
 
-    url = validateUrl(url)
-    if (!url) { resp.error = 'No valid url was detected.'; return resp }
+    if (!clone) { closeTab(front) }
 
-    if (!clone) { error = closeCurrentTab(frontApp) }
-    if (error) { resp.error = error; return resp }
-
-    error = openUrl(url, targetApp, { dedupe: dedupe })
-    if (error) { resp.error = error; return resp }
-
-    resp.success = `${resp.from} -> ${resp.to} | ${resp.title}`
-    return resp
+    return `${front} >> ${target} | ${title}`
 }
 
 
-function copyData({clips = new Set(['url'])} = {}) {
-    const resp = {
-        copied: null,
-        success: null,
-        error: null
-    }
-
-    const frontApp = frontmostApp()
-    const data = getAppData(frontApp, { selection: clips.has('selection') })
-    if (data.error) { resp.error = data.error; return resp }
-
+function copyData({ clips } = {}) {
+    const appName = frontmostApp()
+    const data = getAppData(appName, clips)
     clips = Array.from(clips)
-    const copied = clips.map(type => data[type] || '').join('\n')
-    theClipboard(copied)
+    const text = clips.map(type => data[type] || '').join('\n')
+    theClipboard(text)
 
-    Object.assign(resp, {
-        copied: copied,
-        success: `Copied [${clips.toString()}] to clipboard from ${frontApp}.`
-    })
-
-    return resp
+    return `Copied [${clips.toString().toUpperCase()}] from ${appName}`
 }
 
 
 function openLink({ dedupe }) {
-    const resp = {
-        url: null,
-        success: null,
-        error: null
-    }
+    let appName = frontmostApp(),
+        url = getAppData(appName, ['selection']).selection || theClipboard();
 
-    const frontApp = frontmostApp()
-    const text = getAppData(frontApp, { selection: true }).selection || theClipboard()
+    [url, appName] = openUrl(url, appName, { dedupe: dedupe })
 
-    let url = validateUrl(text)
-    if (!url) { resp.error = 'No valid url was detected.'; return resp }
-
-    let error = openUrl(url, frontApp, { dedupe: dedupe })
-    if (error) { resp.error = error; return resp }
-
-    Object.assign(resp, {
-        url: url,
-        success: `Opened link: ${url}`
-    })
-    return resp
+    return `Opened link in ${appName}: ${url}`
 }
+
 
 // ================================================================================================
 
@@ -133,17 +79,20 @@ function parseArgv(argv = '', delimiter = '&') {
     const actions = qs.map(q => {
         q = q.trim();
         const params = q.split(/\s+/)
-        const action = parseAction(...params)
-        return action
+        return parseAction(params)
     });
 
     return actions
 }
 
 
-function parseAction (name = 'switch', ...params) {
-    name = name.toLowerCase()
-    if (ACTION_SHORTS.hasOwnProperty(name)) { name = ACTION_SHORTS[name] }
+function parseAction([ name, ...opts ]) {
+    // sanitize action name
+    if      (/^sw(itch)?$/i.test(name))  { name = 'switch' }
+    else if (/^co?py?$/i.test(name))     { name = 'copy' }
+    else if (/^op(en)?$/i.test(name))    { name = 'open' }
+    else if (/^s(ta)?sh??$/i.test(name)) { name = 'stash' }
+    else                                 { name = name.toLowerCase() }
 
     const options = {
         // swtich tab & open url related
@@ -156,167 +105,183 @@ function parseAction (name = 'switch', ...params) {
 
     const flags = new Set()
     const clips = new Set()
-    params.forEach(p => {
-        if      (/^c(lone)*$/i.test(p))   { flags.add('clone') }
-        else if (/^de?d(upe)*$/i.test(p)) { flags.add('dedupe') }
-        else if (/^re(verse)*$/i.test(p)) { flags.add('reverse') }
+    opts.forEach(p => {
+        if      (/^c(lone)?$/i.test(p))   { flags.add('clone') }
+        else if (/^de?d(upe)?$/i.test(p)) { flags.add('dedupe') }
+        else if (/^re(verse)?$/i.test(p)) { flags.add('reverse') }
 
         else if (/^url$/i.test(p))        { clips.add('url') }
         else if (/^title$/i.test(p))      { clips.add('title') }
-        else if (/^selection$/i.test(p))   { clips.add('selection') }
+        else if (/^selection$/i.test(p))  { clips.add('selection') }
+        else if (/^tabs$/i.test(p))       { clips.add('tabs') }
 
     });
 
     flags.forEach(f => options[f] = true);
     if (clips.size) { options.clips = clips }
 
-    return { name, options }
+    return [ name, options ]
+
 }
 
+// ================================================================================================
 
-function frontmostApp() {
-    const SystemEvents = Application('System Events')
-    const appName = SystemEvents.processes.whose({ frontmost: true })[0].name()
-    return appName
-}
+const SAFARI_LIST = ['Safari', 'Webkit']
+const CHROME_LIST = ['Google Chrome', 'Google Chrome Canary', 'Chromium']
 
+const SystemEvents = Application('System Events')
+SystemEvents.includeStandardAdditions = true
+const frontmostApp = () => SystemEvents.processes.whose({ frontmost: true })[0].name()
 
-function getApp(appName, activate = false) {
-    const app = Application(appName)
-    app.includeStandardAdditions = true
-    if (activate) { app.activate() } else { app.launch() }
-    return app
-}
+// ================================================================================================
 
 function getDefaultBrowser() {
-    const app = Application.currentApplication()
-    app.includeStandardAdditions = true
-    const defaultBrowser = app.doShellScript(
-        "export VERSIONER_PERL_PREFER_32_BIT=yes; perl -MMac::InternetConfig -le 'print +(GetICHelper \"http\")[1]'"
+    return SystemEvents.doShellScript(
+        "export VERSIONER_PERL_PREFER_32_BIT=yes;" +
+        "perl -MMac::InternetConfig -le 'print +(GetICHelper \"http\")[1]'"
     )
-    return defaultBrowser
 }
 
+
 function theClipboard(sth) {
-    const SystemEvents = Application('System Events')
-    SystemEvents.includeStandardAdditions = true
     if (sth) { SystemEvents.setTheClipboardTo(sth) }
     return SystemEvents.theClipboard()
 }
 
-function keystroke(key, modifiers = []) {
-    const SystemEvents = Application('System Events')
-    const using = modifiers.map(modifier => `${modifier} down`)
-    //console.log ('keystroke: ', key, using)
-    if (using.length === 0) {
-        SystemEvents.keystroke(key)
+
+// propsIn: {appName}
+function getApp(appName = frontmostApp(), { activate = false, appOnly = false} = {}) {
+    let app = null
+    try {
+        app = Application(appName)
     }
-    else {
-        SystemEvents.keystroke(key, { using: using })
+    catch (err) {
+        throw new Error(`Application ${appName} was not found.`)
     }
+
+    app.includeStandardAdditions = true
+    activate && app.activate()
+    //activate ? (app.activate()) : (app.launch())
+
+    if (appOnly) { return app }
+
+    let windows = app.windows(),
+        frontTab, title, url;
+
+    if (isSafari(appName)) {
+        windows = windows.filter(win => win.document() !== undefined)
+        if (windows.length) {
+            frontTab = windows[0].currentTab()
+            if (frontTab) { title = frontTab.name(); url = frontTab.url() }
+        }
+    }
+    else if (isChrome(appName)) {
+        if (windows.length) {
+            frontTab = windows[0].activeTab()
+            if (frontTab) { title = frontTab.title(); url = frontTab.url() }
+        }
+    }
+
+    return [app, windows, frontTab, title, url]
 }
 
 
-function getAppData(appName = frontmostApp(), {selection = false} = {}) {
-    const data = {
-        url: null,
-        title: null,
-        selection: null,
-        error: null
+function getAppData(appName, clips = new Set()) {
+    let [app, windows, frontTab, title, url] = getApp(appName)
+    appName = app.name()
+    if (!windows.length) { throw new Error(`No active window was found in ${appName}`) }
+
+    const data = {}
+    clips = new Set(clips)
+
+    // get title/name data
+    if (clips.has('title')) {
+        data.title = title || windows[0].name() || appName
     }
 
-    let app = null
-    try { app = Application(appName) }
-    catch (err) { data.error = `No such application - ${appName}`; return data }
+    // url for browsers
+    if (clips.has('url')) { data.url = url }
 
-    try {
-        if (isSafari(appName)) {
-            const currentDoc = app.windows[0].document()
-            data.url = currentDoc.url()
-            data.title = currentDoc.name()
-
-            if (selection) {
-                // do javascript trick to get selection text in Safari tab
-                data.selection = app.doJavaScript("('' + getSelection())", { in: currentDoc })
+    // selected text
+    if (clips.has('selection')) {
+        try {
+            // do javascript trick to get selection text in browser tab
+            if (frontTab) {
+                const js = "''+getSelection()"
+                if (isSafari(appName)) {
+                    data.selection = app.doJavaScript(js, { in: frontTab })
+                }
+                else if (isChrome(appName)) {
+                    data.selection = frontTab.execute({ javascript: js })
+                }
             }
-        }
-        else if (isChrome(appName)) {
-            const activeTab = app.windows[0].activeTab()
-            data.url = activeTab.url()
-            data.title = activeTab.title()
 
-            if (selection) {
-                // do javascript trick to get selection text in Chrome tab
-                data.selection = activeTab.execute({ javascript: "('' + getSelection())" })
-            }
-        }
-        else {
-            data.title = (app.windows.length && app.windows[0].name()) || app.name()
-
-            if (selection) {
+            else {
                 // call keystroke `cmd + c` to copy text
                 const clipboardBackup = theClipboard()
-                keystroke('c', ['command'])
-                delay(0.1)
+                SystemEvents.keystroke('c', { using: 'command down' })
+                delay(0.1)  // wait 0.1s to let keystroke take effect
                 data.selection = theClipboard()
                 // TODO better way to detect selection over this buggy workaround
                 if (data.selection === clipboardBackup) { data.selection = null }
                 else { theClipboard(clipboardBackup) }
             }
         }
+        catch (err) {
+            throw new Error(`Unable to get selection in ${appName}`)
+        }
     }
-    catch (err) {
-        console.log(err)
-        data.error = `Failed to get data of application ${appName}`
+
+    // all tabs
+    if (clips.has('tabs') && (isSafari(appName) || isChrome(appName))) {
+        data.tabs = windows[0].tabs().map(tab => ({ url: tab.url(), title: tab.title() }))
     }
 
     return data
 }
 
 
-function closeCurrentTab(appName = frontmostApp()) {
-    let app = null
-    try { app = Application(appName) }
-    catch (err) { data.error = `No such application - ${appName}`; return data }
-
+function closeTab(appName, { closeWindow = false } = {}) {
+    const [app, windows, frontTab] = getApp(appName)
+    appName = app.name()
     try {
-        const win = app.windows[0]
-        if (isSafari(appName)) { app.close(win.currentTab()) }
-        else if (isChrome(appName)) { app.close(win.activeTab()) }
+        if (windows.length && closeWindow) { app.close(windows[0]) }
+        else if (frontTab) { app.close(frontTab) }
+        else { throw new Error(`${appName} is not a browser or not supported yet.`) }
     }
     catch (err) {
-        return `No tabs of current window of application - ${appName}`
+        throw new Error(`Unable to close tab in ${appName}`)
     }
 
-    return null
+}
+
+function closeCurrentTab(appName) {
 }
 
 
 function openUrl(url, target, { activate = true, dedupe = false, newTab = true, background = false } = {}) {
-    let app = null
-    if (!isSafari(target) && !isChrome(target)) { target = getDefaultBrowser() }
+    url = validateUrl(url)
+    if (!url) { throw new Error('No valid URL was detected.') }
 
-    try { app = getApp(target, activate) }
-    catch (err) {
-        app = Application.currentApplication()
-        app.includeStandardAdditions = true
-        app.openLocation(url)
-        return null
+    target = (isSafari(target) || isChrome(target)) ? target : getDefaultBrowser()
+    let [app, windows, frontTab] = getApp(target, { activate: activate })
+    let appName = app.name()
+
+    // create new window if no valid ones
+    if (!windows.length) {
+        isSafari(target) ? app.Document().make() : app.Window().make()
+        app.windows[0].tabs[0].url = url
+        return
     }
 
-    let windows = app.windows()
-    if (isSafari(target)) { windows = windows.filter(w => w.document() !== undefined) }
-
     let exists = false
+
     if (dedupe) {
         windows.some((win) => {
-            let tabs = null
-            try { tabs = win.tabs() } catch (err) { return exists }
-
-            tabs.some((tab, i) => {
+            win.tabs().some((tab, i) => {
                 // TODO more wise url match method
                 if (tab.url() == url) {
-                    exists = [win, tab, i + 1]
+                    exists = [win, tab, i + 1];
                     return true
                 }
 
@@ -325,42 +290,36 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
 
             return exists   // false
         })
-
-    }
-
-    // create new window if no valid ones
-    if (!windows.length /* & !exists */) {
-        if (isSafari(target)) { app.Document().make() }
-        else { app.Window().make() }
-        app.windows[0].tabs[0].url = url
-        return null
     }
 
     exists = exists || [windows[0]]
     let [win, tab, tabIndex] = exists
 
     if (!tab) {
-        if (newTab || !win.tabs().length ) {
+        if (newTab) {
             tab = app.Tab({ url: url })
             tabIndex = win.tabs.push(tab)
         }
         else {
-            tab = win.currentTab || win.activeTab
-            tab && (tab.url = url)
+            frontTab && (frontTab.url = url)
         }
     }
 
-    if (!tab) { return 'browser not supported' }
+    //if (!tab) { throw new Error(`Unable to create tab in ${appName}`) }
 
     if (!background) {
-        if (isSafari(target)) { win.currentTab = tab }
-        else if (isChrome(target) && tabIndex) { win.activeTabIndex = tabIndex }
+        if (isSafari(target)) {
+            win.currentTab = tab
+        }
+        else if (isChrome(target) && tabIndex) {
+            win.activeTabIndex = tabIndex
+        }
     }
 
     // always bring window to front within app
     win.index = 1
 
-    return null
+    return [url, appName]
 }
 
 
@@ -390,4 +349,22 @@ function validateUrl(str, debug) {
 
 function isSafari(name) { return SAFARI_LIST.indexOf(name) !== -1 }
 function isChrome(name) { return CHROME_LIST.indexOf(name) !== -1 }
+
+
+//function strReplace(str, replacer) {
+    //str = STRINGS[str] || str
+    //if (typeof replacer === 'object') {
+        //const {_prefix, _suffix} = replacer
+        //if (_prefix) { str = `${_prefix} ${str}`; delete replacer._prefix }
+        //if (_suffix) { str = `${str} ${_suffix}`; delete replacer._suffix }
+
+        //for (let k in replacer) {
+            //let p = new RegExp(`\\$\\{${k}\\}`, 'i')
+            //str = str.replace(p, replacer[k])
+        //}
+    //}
+
+    //return str
+//}
+
 
