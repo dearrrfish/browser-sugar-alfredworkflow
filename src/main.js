@@ -1,93 +1,59 @@
 
-import browserSwitch from './browser-switch'
-import copyData from './copy-data'
-import openLink from './open-link'
-import { stashTabs } from './stash'
+import Preview from './preview'
+import actions from './actions'
 
-run(false)  // rollup build hack
+run(false)  // rollupjs build hack
 
 // `run` applet
-function run(argv) {
+function run(argv = []) {
     if (argv === false) { return }
-    argv = argv.join(' ')
-    const actions = parseArgv(argv)
-    console.log (JSON.stringify(actions))
+    let resp = '' // Response output
 
-    let resp = ''
-    actions.every(([ name, options ]) => {
-        try {
-            switch (name) {
-                case 'switch': resp = browserSwitch(options); break;
-                case 'copy'  : resp = copyData(options); break;
-                case 'open'  : resp = openLink(options); break;
-                case 'stash' : resp = stashTabs(options); break;
-                default: resp = `Unknown action - ${name}`; return false;
-            }
-            return true
+    // Detect call type of running script from first argument
+    let [ callType, actionName, ...qs ] = argv.join(' ').split(/\s+/)
+    callType = callType.toLowerCase()
+    actionName = actionName.toLowerCase()
+
+    if (callType !== 'preview' && callType !== 'run') {
+        console.log(`Error: Unknown callType - ${callType}`)
+    }
+
+    // Get action name from next coming argument
+    const [ action ] = actions.search(actionName)
+
+    if (!action) {
+        if (callType === 'preview') {
+            resp = actions.preview()
         }
-        catch (err) {
-            console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
-            resp = err.message || err
-            return false
+        else if (callType === 'run') {
+            resp = `Error: No matched action was found for ${actionName}.\n` +
+                   `Possible actions: ${actions.search(null, 'name').join(', ')}`
         }
-    })
+        return resp
+    }
+
+    try {
+        // Parse and set query object to action from query string
+        qs = qs.join(' ')
+        action.setQuery(qs)
+        resp = action[callType]()
+    }
+    catch (err) {
+        console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+        resp = err.message || err
+        if (callType === 'preview') {
+            const preview = new Preview()
+            preview.addError(action, {
+                //uid: `error_${actionName}`,
+                //autocomplete: ''
+                subtitle: resp
+            })
+            resp = preview.buildXML()
+        }
+        return resp
+    }
 
     return resp
 }
 
-// ================================================================================================
-
-// argv {string}
-function parseArgv(argv = '', delimiter = '&') {
-    //console.log(argv, delimiter)
-    const qs = argv.split(delimiter)
-    const actions = qs.map(q => {
-        q = q.trim();
-        const params = q.split(/\s+/)
-        return parseAction(params)
-    });
-
-    return actions
-}
-
-
-function parseAction([ name, ...opts ]) {
-    // sanitize action name
-    if      (/^sw(itch)?$/i.test(name))  { name = 'switch' }
-    else if (/^co?py?$/i.test(name))     { name = 'copy' }
-    else if (/^op(en)?$/i.test(name))    { name = 'open' }
-    else if (/^s(ta)?sh??$/i.test(name)) { name = 'stash' }
-    else                                 { name = name.toLowerCase() }
-
-    const options = {
-        // swtich tab & open url related
-        clone: false,       // do not close original tab in front browser
-        dedupe: false,      // do not duplicate open new tab if exists in target browser
-        reverse: false,     // reverse flow from target to front
-        // copy tab information related
-        clips: new Set(['url', 'title', 'selection'])
-    }
-
-    const flags = new Set()
-    const clips = new Set()
-    opts.forEach(p => {
-        if      (/^c(lone)?$/i.test(p))   { flags.add('clone') }
-        else if (/^de?d(upe)?$/i.test(p)) { flags.add('dedupe') }
-        else if (/^re(verse)?$/i.test(p)) { flags.add('reverse') }
-
-        else if (/^url$/i.test(p))        { clips.add('url') }
-        else if (/^title$/i.test(p))      { clips.add('title') }
-        else if (/^selection$/i.test(p))  { clips.add('selection') }
-        else if (/^tabs$/i.test(p))       { clips.add('tabs') }
-
-        else { flags.add(p.toLowerCase()) }
-
-    });
-
-    flags.forEach(f => options[f] = true);
-    if (clips.size) { options.clips = clips }
-
-    return [ name, options ]
-
-}
 

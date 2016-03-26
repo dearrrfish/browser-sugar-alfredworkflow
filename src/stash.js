@@ -1,31 +1,47 @@
 
 import {
-    frontmostApp, isSafari, isChrome,
+    frontmostApp, getBrowser,
     getAppData, closeTab, openUrl, validateUrl,
-    writeToFile
+    readFromFile, writeToFile
 } from './utils'
 
+const STASH_FILE = 'stash.json'
 
-function stashTabs({ clone }) {
-    const appName = frontmostApp()
-    if (!isSafari(appName) && !isChrome(appName)) {
-        throw new Error(`${appName} is not supported browser.`)
+function stashTabs({ clone, from, unknowns }) {
+    from = from || frontmostApp()
+    const browser = getBrowser(from)[0]
+
+    if (!browser) {
+        throw new Error(`${from} is not supported browser.`)
     }
 
-    const { tabs } = getAppData(appName, ['tabs'])
-    if (!tabs.length) { throw new Error(`No tab in front window of ${appName}.`) }
+    let { tabs } = getAppData(browser, ['tabs'])
+    if (!tabs.length) { throw new Error(`No tab in front window of ${browser}.`) }
+
+    // Encode non-latin characters to avoid error when writing to file
+    tabs = tabs.map(([ url, title ]) => [ encodeURIComponent(url), encodeURIComponent(title) ])
 
     const stash = {
-        appName,
-        tabs,
-        timestamp: new Date().getTime()
+        name: (unknowns.length ? unknowns.join(' ') : 'Untitled Stash'),
+        appName: browser,
+        timestamp: new Date().getTime(),
+        tabs
     }
 
-    writeToFile(stash, `/stash/${appName}.json`)
+    let stashList = []
+    try {
+        stashList = JSON.parse(readFromFile(STASH_FILE))
+    }
+    catch (err) {
+        console.log(`Read file content error - ${STASH_FILE}: `, err)
+    }
 
-    if (!clone) { closeTab(appName, { closeWindow: true }) }
+    stashList.push(stash)
+    writeToFile(stashList, STASH_FILE)
 
-    return `Stashed tabs of ${appName}!`
+    if (!clone) { closeTab(browser, { closeWindow: true }) }
+
+    return `Stashed tabs of ${browser}!`
 }
 
 
