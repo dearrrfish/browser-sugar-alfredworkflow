@@ -14,7 +14,7 @@ function run(argv = []) {
     callType = callType.toLowerCase()
     actionName = actionName.toLowerCase()
 
-    if (callType !== 'preview' && callType !== 'run') {
+    if (['preview', 'run', 'defaults', 'set'].indexOf(callType) === -1) {
         console.log(`Error: Unknown callType - ${callType}`)
     }
 
@@ -22,14 +22,18 @@ function run(argv = []) {
     const [ action ] = actions.search(actionName)
 
     if (!action) {
-        if (callType === 'preview') {
-            resp = actions.preview()
+        switch (callType) {
+            case 'preview':
+            case 'defaults':
+                resp = actions.preview()
+                break
+
+            case 'run':
+            case 'set':
+                resp = `Error: No matched action was found for ${actionName}.\n` +
+                       `Possible actions: ${actions.search(null, 'name').join(', ')}`
+                break
         }
-        else if (callType === 'run') {
-            resp = `Error: No matched action was found for ${actionName}.\n` +
-                   `Possible actions: ${actions.search(null, 'name').join(', ')}`
-        }
-        return resp
     }
 
     try {
@@ -41,7 +45,7 @@ function run(argv = []) {
     catch (err) {
         console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
         resp = err.message || err
-        if (callType === 'preview') {
+        if (callType === 'preview' || callType === 'defaults') {
             const preview = new Preview()
             preview.addError(action, {
                 //uid: `error_${actionName}`,

@@ -1,14 +1,14 @@
 
 import Items from './workflow'
-import { BROWSERS, getApp, getTester } from './utils'
+import { BROWSERS, getApp, getTester, isTrue } from './utils'
 
 
 const PRESETS = {
     icons: {
-        'error': 'error.png',
-        'browser': 'browser.png',
-        'browser_safari': 'browser_safari.png',
-        'browser_chrome': 'browser_chrome.png',
+        'error'          : 'error.png',
+        'browser'        : 'browser.png',
+        'browser_safari' : 'browser_safari.png',
+        'browser_chrome' : 'browser_chrome.png',
     },
     titlePrefix: {
         'error': '(；￣Д￣）',
@@ -23,12 +23,16 @@ class Preview extends Items {
     hasError() { return this.filter(item => item.get('_type', '').startsWith('error')).length > 0 }
 
 
-    addOptionItems(types, action, filter, opt) {
+    addOptionItems(types, action, filter, opt, data = {}) {
         types = Array.isArray(types) ? types : [types]
         types.forEach(type => {
             switch (type) {
-                case 'frontmost': this.addFrontmostApp(action, filter, opt, 999); break
-                case 'browsers': this.addBrowsers(action, filter, opt, 999); break
+                case 'frontmost'          : this.addFrontmostApp(action, filter, opt, 999); break
+                case 'browsers'           : this.addBrowsers(action, filter, opt, 999); break
+                //case 'actions'            : this.addActions(data.actions, filter, opt, 999); break
+                case 'action_flags'       : this.addActionFlags(action, filter, opt, 999); break
+                case 'action_flag_values' : this.addActionFlagValues(action, data.flag, filter, opt, 999); break
+
             }
         })
     }
@@ -50,12 +54,13 @@ class Preview extends Items {
 
             const override = this.getOverride(opt, 'frontmostapp')
             const item = {
-                _type: `app_frontmostapp`,
-                uid: `app_frontmost`,
-                valid: 'no',
-                autocomplete: action.constructQueryString(override),
-                title: `[FRONT:${appName}] ${title}`,
-                subtitle: subtitle
+                _type         : `app_frontmostapp`,
+                uid           : `app_frontmost`,
+                valid         : 'no',
+                autocomplete  : action.constructQueryString(override),
+                title         : `[FRONT                                : ${appName}] ${title}`,
+                subtitle      : subtitle,
+                icon_fileicon : `/Applications/${appName}.app`
             }
 
             this.add(item, insertBefore)
@@ -64,10 +69,10 @@ class Preview extends Items {
         catch (err) {
             const override = this.getOverride(opt)
             this.addError(action, {
-                _type: 'error',
-                autocomplete: action.constructQueryString(override),
-                title: 'Front app is not available.',
-                subtitle: err
+                _type        : 'error',
+                autocomplete : action.constructQueryString(override),
+                title        : 'Front app is not available.',
+                subtitle     : err
             }, 999)
         }
     }
@@ -82,25 +87,83 @@ class Preview extends Items {
 
             const override = this.getOverride(opt, firstBrowser)
             const item = {
-                _type: `browser_${firstBrowser}`,
-                uid: `browser_${firstBrowser}`,
-                valid: 'no',
-                autocomplete: action.constructQueryString(override),
-                title: firstBrowser
+                _type         : `browser_${firstBrowser}`,
+                uid           : `browser_${firstBrowser}`,
+                valid         : 'no',
+                autocomplete  : action.constructQueryString(override),
+                title         : firstBrowser,
+                icon_fileicon : `/Applications/${firstBrowser}.app`
             }
 
             this.add(item, insertBefore)
         })
     }
 
+
+    //addActions(actions, filter, opt, insertBefore) {
+        //actions.forEach(action => {
+            //if (filter && !action.fuzzyTestName(filter)) { return }
+            //const override = this.getOverride(opt, action.name)
+            //this.add({
+                //_type        : `action_${action.name}`,
+                //uid          : `action_${action.name}`,
+                //valid        : 'no',
+                //autocomplete : action.constructQueryString(override),
+                //title        : action.name,
+                //subtitle     : action.title
+            //}, insertBefore)
+        //})
+    //}
+
+
+    addActionFlags(action, filter, opt, insertBefore) {
+        for (let flag in action.flags) {
+            const { nameTest, defaultValue, description } = action.flags[flag]
+            if (filter && !nameTest(filter)) { continue }
+
+            const override = this.getOverride(opt, flag)
+            this.add({
+                _type        : `actionflag_${flag}`,
+                uid          : `actionflag_${flag}`,
+                valid        : 'no',
+                autocomplete : action.constructQueryString(override),
+                title        : `${flag} [${isTrue(defaultValue) ? 'ON' : 'OFF'}]`,
+                subtitle     : `${action.name}/${flag}: ${description || ''}`
+            }, insertBefore)
+
+        }
+    }
+
+
+    addActionFlagValues(action, flag, filter, opt, insertBefore) {
+        ['on', 'off'].forEach(v => {
+            if (filter) {
+                const fuzzyTest = getTester(v, 'fuzzy_i')
+                if (!fuzzyTest(filter)) { return }
+            }
+            const _type = `actionflagvalue_${v}`
+            const query = action.constructQueryString(this.getOverride(opt, v))
+            const {defaultValue, description} = action.flags[flag]
+            this.add({
+                _type,
+                //uid          : _type,
+                arg          : query,
+                autocomplete : query,
+                title        : `${v}${isTrue(v) == isTrue(defaultValue) ? ' [✓]' : ''}`,
+                subtitle     : `${action.name}/${flag}: ${description || ''}`
+            }, insertBefore)
+        })
+    }
+
+
     addError(action, props, insertBefore) {
         const serialized = action.serialize()
         const item = Object.assign({
-            _type: `error_${action.name}`,
-            valid: 'no',
-            title: 'You\'ve caught by an error monkey!',
-            subtitle: serialized,
-            text_copy: serialized,
+            _type     : `error_${action.name}`,
+            valid     : 'no',
+            title     : 'You\'ve caught by an error monkey!',
+            subtitle  : serialized,
+            text_copy : serialized,
         }, props)
 
         item.subtitle_cmd = item.subtitle_cmd || item.text_copy

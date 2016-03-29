@@ -1,7 +1,7 @@
 
 import Preview from './preview'
 import Action from './action'
-import { getFromToBrowsers, getAppData, openUrl, closeTab, isTrue } from './utils'
+import { getFromToBrowsers, getAppData, openUrl, closeTab } from './utils'
 
 
 class Switcher extends Action {
@@ -61,8 +61,8 @@ class Switcher extends Action {
     }
 
     run() {
-        let { from, to, index } = this.getQueryOptions({ allowEmpty: false, sanitize: true })
-        let { reverse, dedupe, clone } = this.getQueryFlags(true)
+        const { from, to, index } = this.getQueryOptions({ allowEmpty: false, sanitize: true })
+        const { reverse, dedupe, clone } = this.getQueryFlags(true)
 
         let fromBrowser, toBrowser
         [ fromBrowser, toBrowser ] = getFromToBrowsers(from, to, reverse)

@@ -1,32 +1,6 @@
 
 import Preview from './preview'
-import { getUserDefaults, getTester } from './utils'
-
-const TESTS = {
-    __NO_MATCH  : /^$/,
-
-    // actions
-    SWITCH      : /^sw(itch)?$/i,
-    COPY        : /^co?py?$/i,
-    OPEN        : /^op(en)?$/i,
-    STASH       : /^s(ta)?sh?$/i,
-    UNSTASH     : /^uns(ta)?sh?$/i,
-
-    // options
-    FROM        : /^from$/i,
-    TO          : /^to$/i,
-    INDEX       : /^in?de?x$/i,
-    CLONE       : /^cl(one)?$/i,
-    DEDUPE      : /^de?d(upe)?$/i,
-    REVERSE     : /^re(verse)?$/i,
-
-    // flags
-    URL         : /^url$/i,
-    TITLE       : /^title$/i,
-    SELECTION   : /^select(ion)?$/i,
-    TABS        : /^tabs$/i
-
-}
+import { readFromFile, writeToFile, getUserDefaults, setUserDefaults, getTester } from './utils'
 
 
 class Action {
@@ -38,26 +12,36 @@ class Action {
         this.opts = {}
         opts.forEach(opt => {
             if (!Array.isArray(opt)) { opt = [opt] }
-            let [ optName, optTest, defaultValue, required, sanitizer ] = opt
+            let [ optName, optTest, defaultValue, required, sanitizer, description ] = opt
             let userDefaultValue = getUserDefaults(name, 'options', optName)
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.opts[optName] = {
                 nameTest: getTester(optName, optTest),
                 defaultValue,
                 required,
-                sanitizer
+                sanitizer,
+                description
             }
         })
+
+        // shared options to set defaults of action flags
+        this.opts.set_flag = {
+            nameTest: getTester('set_flag', 'same_i'),
+        }
+        this.opts.set_value = {
+            nameTest: getTester('set_value', 'same_i'),
+        }
 
         this.flags = {}
         flags.forEach(flag => {
             if (!Array.isArray(flag)) { flag = [flag] }
-            let [ flagName, flagTest, defaultValue ] = flag
+            let [ flagName, flagTest, defaultValue, description ] = flag
             let userDefaultValue = getUserDefaults(name, 'flags', flagName)
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.flags[flagName] = {
                 nameTest: getTester(flagName, flagTest),
-                defaultValue
+                defaultValue,
+                description
             }
         })
 
@@ -81,6 +65,45 @@ class Action {
 
     preview() {}
     run() {}
+
+
+    defaults() {
+        const preview = new Preview()
+        const options = this.getQueryOptions()
+        options.set_flag = options.set_flag || ''
+        options.set_value = options.set_value || ''
+
+        let xml = this.previewOptionSelects(['action_flags'], preview, options, ['set_flag'])
+        if (xml) { return xml }
+
+        xml = this.previewOptionSelects(['action_flag_values'],
+                                        preview,
+                                        options,
+                                        ['set_value'],
+                                        { flag: options.set_flag })
+        if (xml) { return xml }
+
+        return preview.buildXML()
+    }
+
+    set() {
+        const { set_flag, set_value } = this.getQueryOptions()
+        if (!set_flag || !set_value) {
+            throw new Error(
+                `Incomplete options to set default value for ${this.name.toUpperCase()}`
+            )
+        }
+
+        const [flag, value] = setUserDefaults(this.name, 'flags', set_flag, set_value)
+
+        if (flag, value) {
+            return `Turned ${value} the flag ${(this.name + '.' + flag).toUpperCase()} by default`
+        }
+        else {
+            return ''
+        }
+    }
+
 
     getOptionName(name) {
         Object.keys(this.opts).some(k => {
@@ -134,7 +157,7 @@ class Action {
         return options
     }
 
-    getQueryNotes() { return this.query.notes || '' }
+    getQueryNotes() { return (this.query.notes || '').trim() }
 
 
     setQuery(qs) {
@@ -271,7 +294,7 @@ class Action {
     }
 
 
-    previewOptionSelects(types = [], preview, options, keys = []) {
+    previewOptionSelects(types = [], preview, options, keys = [], data = {}) {
         let xml = null
         types = Array.isArray(types) ? types : [types]
         keys = Array.isArray(keys) ? keys : [keys]
@@ -279,7 +302,7 @@ class Action {
         for (let k of keys) {
             const v = options[k]
             if (typeof v === 'string') {
-                preview.addOptionItems(types, this, v, k)
+                preview.addOptionItems(types, this, v, k, data)
 
                 if (preview.hasError()) { xml = preview.buildXML() }
                 else {
@@ -288,7 +311,7 @@ class Action {
                         const override = preview.getOverride(k)
                         preview.addError(this, {
                             autocomplete: this.constructQueryString(override),
-                            title: `No supported app was found for: ${v}`,
+                            title: `No valid option value was found for: ${v}`,
                             subtitle: 'Press ENTER / TAB key to choose from a list.'
                         })
                         xml = preview.buildXML()

@@ -1,18 +1,18 @@
 
 import Preview from './preview'
-
 // action instances
 import switcher from './switcher'
 import copier from './copier'
-//import opener from './opener'
-//import stash from './stash'
+import opener from './opener'
+import stash from './stash'
+import unstash from './unstash'
 
-const ACTION_LIST = [ switcher, copier/*, opener, stash */]
+const actions = [switcher, copier, opener, stash, unstash]
 
 const search = function(name, fuzzy, props) {
-    let found = name ? ACTION_LIST.filter(
+    let found = name ? actions.filter(
         action => fuzzy ? action.fuzzyTestName(name) : action.testName(name)
-    ) : (fuzzy ? ACTION_LIST : [])
+    ) : (fuzzy ? actions : [])
 
     if (props) {
         found = found.map(action => {
@@ -26,20 +26,20 @@ const search = function(name, fuzzy, props) {
 }
 
 
-const preview = function(name) {
-    const list = search(name, true)
-    const items = list.map(action => ({
-        _type: `action_${action.name}`,
-        uid: `action_${action.name}`,
-        valid: 'no',
-        autocomplete: action.constructQueryString(),
-        title: action.title
-    }))
+//const preview = function(name) {
+    //const list = search(name, true)
+    //const items = list.map(action => ({
+        //_type: `action_${action.name}`,
+        //uid: `action_${action.name}`,
+        //valid: 'no',
+        //autocomplete: action.constructQueryString(),
+        //title: action.title
+    //}))
 
-    const preview = new Preview(items)
-    return preview.buildXML()
+    //const preview = new Preview(items)
+    //return preview.buildXML()
 
-}
+//}
 
-export default { search, preview }
+export default { search/*, preview*/ }
 

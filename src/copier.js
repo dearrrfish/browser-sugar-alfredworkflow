@@ -13,16 +13,16 @@ class Copier extends Action {
         let xml = this.previewOptionSelects(['frontmost', 'browsers'], preview, options, ['from'])
         if (xml) { return xml }
 
-        let appData
+        let _app
         try {
-            appData = getApp(options.from, { index: options.index })
+            _app = getApp(options.from, { index: options.index })
         }
         catch (err) {
             console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
             return this.previewOptionSelectsError(err, preview, 'from')
         }
 
-        const [ app, windows, browserType, targetTab, targetTabIndex, title , url ] = appData
+        const [ app, windows, browserType, targetTab, targetTabIndex, title , url ] = _app
         const appName = app.name()
 
         // Source application is a browser
@@ -32,7 +32,7 @@ class Copier extends Action {
                 tabs = [targetTab]
             }
             else {
-                tabs = getAppData(appName, ['tabs'], { appData }).tabs
+                tabs = getAppData(appName, ['tabs'], { source: _app }).tabs
             }
 
             if (!tabs || !tabs.length) {
@@ -52,11 +52,11 @@ class Copier extends Action {
                     //subtitle_shift: ...,
                     text_copy: `[${title}](${url})`,
                     text_largetype: query,
-                    icon_fileicon: `${appName}.app`
+                    icon_fileicon: `/Applications/${appName}.app`
                 }
 
                 if (active) { item.title = '[ACTIVE] ' + item.title }
-                item.title = 'Copy << ' + item.title
+                item.title = `📋<<  ${item.title}`,
 
                 preview.add(item, (active ? 0 : 999))
 
@@ -71,7 +71,7 @@ class Copier extends Action {
             preview.add({
                 arg: query,
                 autocomplete: query,
-                title: `Copy << ${title || appName}`,
+                title: `📋<<  ${title || appName}`,
                 subtitle: '',
                 text_copy: appName,
                 text_largetype: query
@@ -88,7 +88,7 @@ class Copier extends Action {
 
         const data = getAppData(from, clips, { index, stringify: true })
         const text = clips.map(type => data[type] || '').join('\n')
-        console.log(JSON.stringify(data))
+        //console.log(JSON.stringify(data))
         theClipboard(text)
 
         return `Copied ${clips.join(',').toUpperCase()} from ${from}.`

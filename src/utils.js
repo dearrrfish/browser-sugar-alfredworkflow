@@ -15,7 +15,8 @@ const FileManager = $.NSFileManager.defaultManager
 let UserDefaults = null
 // ================================================================================================
 
-function getBrowser(name, browsers = Object.keys(BROWSERS)) {
+function getBrowser(name, browsers = Object.keys(BROWSERS), defaultBrowser) {
+    name = name || defaultBrowser
     if (!name) { return [] }
 
     if (!Array.isArray(browsers)) { browsers = [ browsers ] }
@@ -84,7 +85,21 @@ function getDefaultBrowser() {
 
 
 function theClipboard(sth) {
-    if (sth) { SystemEvents.setTheClipboardTo(sth) }
+    if (sth === '__frontmostapp_selection__') {
+        // Method 1: call keystroke `cmd + c` to copy text
+        //SystemEvents.keystroke('c', { using: 'command down' })
+
+        // Method 2: click menu item `Edit - Copy`
+        SystemEvents.processes.whose({ frontmost: true })[0]
+            .menuBars[0].menuBarItems.whose({ name: 'Edit' })[0]
+            .menus[0].menuItems.whose({ name: 'Copy' })[0]
+            .click()
+
+        delay(0.1)  // wait 0.1s to let keystroke take effect
+    }
+    else if (sth) {
+        SystemEvents.setTheClipboardTo(sth)
+    }
     return SystemEvents.theClipboard()
 }
 
@@ -164,14 +179,6 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
     // url for browsers
     if (clips.has('url')) { data.url = url }
 
-    // From here, rest flags require native window interface
-    if (!Array.isArray(windows) || !windows.length) {
-        // Just return empty data instead when no active window detected,
-        // or because it does not support standard suite
-        return data
-        //throw new Error(`No active window was found in ${appName}`)
-    }
-
     // selected text
     if (clips.has('selection')) {
         try {
@@ -186,11 +193,9 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
                 }
             }
 
-            else {
-                // call keystroke `cmd + c` to copy text
+            else if (app.frontmost()) {
                 const clipboardBackup = theClipboard()
-                SystemEvents.keystroke('c', { using: 'command down' })
-                delay(0.1)  // wait 0.1s to let keystroke take effect
+                theClipboard('__frontmostapp_selection__')
                 data.selection = theClipboard()
                 // TODO better way to detect selection over this buggy workaround
                 if (data.selection === clipboardBackup) { data.selection = null }
@@ -201,6 +206,14 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
             throw new Error(`Unable to get selection in ${appName}`)
         }
     }
+
+    // From here, rest flags require native window interface
+    //if (!Array.isArray(windows) || !windows.length) {
+        //// Just return empty data instead when no active window detected,
+        //// or because it does not support standard suite
+        //return data
+        ////throw new Error(`No active window was found in ${appName}`)
+    //}
 
     // all tabs
     if (clips.has('tabs')) {
@@ -252,19 +265,27 @@ function closeTab(appName, { closeWindow = false, index } = {}) {
 }
 
 
-function openUrl(url, target, { activate = true, dedupe = false, newTab = true, background = false } = {}) {
-    url = validateUrl(url)
-    if (!url) { throw new Error('No valid URL was detected.') }
+function openUrl(_url, target, { activate = true, dedupe, newTab = true, background, appData, noValidation } = {}) {
+    let url = _url
+    if (!noValidation) {
+        url = validateUrl(_url)
+        if (!url) { throw new Error(`No valid URL was detected in text: ${_url}`) }
+        if (!/^https?:\/\//i.test(url)) { url = 'http://' + url }
+    }
 
-    target = getBrowser(target)[0] || getDefaultBrowser()
-    let [app, windows, browserType, frontTab] = getApp(target, { activate: activate })
+    if (!appData) {
+        target = getBrowser(target)[0] || getDefaultBrowser()
+        appData = getApp(target, { activate })
+    }
+
+    let [app, windows, browserType, frontTab] = appData
     let appName = app.name()
 
     // create new window if no valid ones
     if (!windows.length) {
         (browserType === 'safari') ? app.Document().make() : app.Window().make()
         app.windows[0].tabs[0].url = url
-        return
+        return [url, appName]
     }
 
     let exists = false
@@ -273,7 +294,10 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
         windows.some((win) => {
             win.tabs().some((tab, i) => {
                 // TODO more wise url match method
-                if (tab.url() == url) {
+                console.log(tab.url(), ' ??? ', url)
+                const tabUrl = tab.url().replace(/[\/?&]+$/, '').toLowerCase()
+                const cleanUrl = url.replace(/[\/?&]+$/, '').toLowerCase()
+                if (tabUrl === cleanUrl) {
                     exists = [win, tab, i + 1];
                     return true
                 }
@@ -294,13 +318,13 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
             tabIndex = win.tabs.push(tab)
         }
         else {
-            tab && (frontTab.url = url)
+            frontTab && (frontTab.url = url)
         }
     }
 
     //if (!tab) { throw new Error(`Unable to create tab in ${appName}`) }
 
-    if (!background) {
+    if (!background && tab) {
         if (browserType === 'safari') {
             win.currentTab = tab
         }
@@ -310,9 +334,28 @@ function openUrl(url, target, { activate = true, dedupe = false, newTab = true, 
     }
 
     // always bring window to front within app
-    win.index = 1
+    //win.index = 1
 
     return [url, appName]
+}
+
+function openUrls(urls, target, { activate = true, dedupe, newWindow, background, noValidation } = {}) {
+    target = getBrowser(target)[0] || getDefaultBrowser()
+    let appData = getApp(target, { activate })
+    let [ app, windows, browserType ] = appData
+
+    if (!windows.length || newWindow) {
+        browserType === 'safari' ? app.Document().make() : app.Window().make()
+        appData = getApp(target, { activate })
+    }
+
+    let appName
+    urls.forEach((url, i) => {
+        const newTab = (i !== 0);
+        [ url, appName ] = openUrl(url, target, { dedupe, appData, newTab, background, noValidation })
+    })
+
+    return [urls, appName]
 }
 
 
@@ -386,22 +429,26 @@ function getUserDefaults(name, type, key) {
         catch (err) {
            console.log('Failed to read user config file.', err)
         }
+        UserDefaults = UserDefaults || {}
     }
 
     const value = ((UserDefaults[name] || {})[type] || {})[key]
     return value
 }
 
+function setUserDefaults(name, type, key, value) {
+    const oldValue = getUserDefaults(name, type, key)
+    if (oldValue !== value) {
+        UserDefaults[name] = UserDefaults[name] || {}
+        UserDefaults[name][type] = UserDefaults[name][type] || {}
+        UserDefaults[name][type][key] = type === 'flags' ? isTrue(value) : value
 
-function fuzzyTest(str = '', full = '', caseSensitive) {
-    if (!caseSensitive) { str = str.toLowerCase(); full = full.toLowerCase() }
-    for(let c of str) {
-        const i = full.indexOf(c)
-        if ( i === -1 ) { return false }
-        full = full.slice(i+1)
+        writeToFile(UserDefaults, 'config.json')
+        return [key, value]
     }
-    return true
+    return []
 }
+
 
 function getTester(str, t) {
     if (t instanceof RegExp) {
@@ -426,10 +473,20 @@ function getTester(str, t) {
                 return true
             }
         }
+        else if (type === 'words') {
+            return function(s) {
+                const ss = s.split(/\s+/)
+                return ss.every(_s => {
+                    //_s = _s.replace(/[^\w_-@]/g, '')
+                    const re = new RegExp(_s, flag)
+                    return re.test(str)
+                })
+            }
+        }
         else {
             return function(s) {
-                const re = new RegExp(str, flag)
-                return re.test(s)
+                const re = new RegExp(s, flag)
+                return re.test(str)
             }
         }
     }
@@ -461,8 +518,9 @@ export {
     BROWSERS, getBrowser, getFromToBrowsers,
     SystemEvents, frontmostApp, theClipboard,
     getDefaultBrowser, getApp, getAppData,
-    openUrl, validateUrl, closeTab,
+    openUrl, openUrls, validateUrl, closeTab,
     readFromFile, writeToFile,
-    getUserDefaults, fuzzyTest, getTester, isTrue
+    getUserDefaults, setUserDefaults,
+    getTester, isTrue
 }
 
