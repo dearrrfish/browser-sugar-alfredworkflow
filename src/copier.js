@@ -1,8 +1,9 @@
 
 import Preview from './preview'
 import Action from './action'
-import { getApp, getAppData, theClipboard, logError } from './utils'
+import { readFromFile, getApp, getAppData, theClipboard, strReplace, logError } from './utils'
 
+const FORMATS_FILE = 'formats.json'
 
 class Copier extends Action {
 
@@ -85,11 +86,26 @@ class Copier extends Action {
     }
 
     run() {
-        const { from, index } = this.getQueryOptions({ allowEmpty: false, sanitize: true })
+        const { from, index, format } = this.getQueryOptions({ allowEmpty: false, sanitize: true })
         let clips = this.getQueryFlags()
 
         if (!clips.size) {
             return `No copy flag was given (${Object.keys(this.flags).join(' | ').toUpperCase()})`
+        }
+
+        // Predefined text styling
+        let formatString
+        if (format) {
+            let formats
+            try {
+                formats = JSON.parse(readFromFile(FORMATS_FILE))
+            }
+            catch (err) {
+                logError(err)
+            }
+            if (formats && formats[format]) {
+                formatString = formats[format]
+            }
         }
 
         if (index === 'all') {
@@ -106,25 +122,39 @@ class Copier extends Action {
                     data = Object.assign(data, extraData)
                 }
 
-                return clips.map(type => data[type] || '').join('\n')
+                return this.formatText(formatString, clips, data)
 
             }).join('\n')
 
             theClipboard(text)
-
             return `Copied ${clips.join(',').toUpperCase()} from all tabs in ${from}`
 
         }
         else {
             clips = Array.from(clips)
             const data = getAppData(from, clips, { index, stringify: true })
-            const text = clips.map(type => data[type] || '').join('\n')
-            //console.log(JSON.stringify(data))
-            theClipboard(text)
+            const text = this.formatText(formatString, clips, data)
 
+            theClipboard(text)
             return `Copied ${clips.join(',').toUpperCase()} from ${from}.`
         }
 
+
+        return resp
+
+    }
+
+    formatText(formatString, clips = [], data = {}) {
+        if (formatString) {
+            const re = /##[\w]+##/ig
+            return formatString.replace(/##[\w]+##/g, m => {
+                m = m.slice(2, -2)
+                return data[m] || ''
+            })
+        }
+        else {
+            return clips.map(type => data[type] || '').join('\n')
+        }
     }
 
 }
@@ -136,7 +166,8 @@ export default new Copier({
     // opt: [ name, test, default, required, sanitizer]
     opts: [
         ['from', 'Source application to copy data from', 1],
-        ['index', 'Tab index number if available', 1, null, false, ['all', Number.parseInt]]
+        ['index', 'Tab index number if available', 1, null, false, ['all', Number.parseInt]],
+        ['format', 'Preset text style when constructing copied data', 2]
     ],
     // flag: [ name, test, default]
     flags: [
