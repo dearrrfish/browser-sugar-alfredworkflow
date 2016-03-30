@@ -180,19 +180,25 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
 
     clips = new Set(clips)
 
+    if (clips.has('browserType')) {
+        data.browserType = browserType
+    }
+
     // get title/name data
-    if (clips.has('title')) {
+    if (clips.has('title') || clips.has('markdown')) {
         if (title) { data.title = title }
         else if (windows && windows[0]) { data.title = windows[0].name() }
         else { data.title = appName }
     }
 
     // url for browsers
-    if (clips.has('url')) { data.url = url }
+    if (clips.has('url') || clips.has('markdown')) { data.url = url }
+
+    // markdown stringify
+    if (clips.has('markdown')) { data.markdown = `[${data.title}](${data.url})` }
 
     // selected text
     if (clips.has('selection')) {
-
 
         try {
             // do javascript trick to get selection text in browser tab
@@ -367,6 +373,7 @@ function openUrls(urls, target, { activate = true, dedupe, newWindow, background
 
     if (!windows.length || newWindow) {
         browserType === 'safari' ? app.Document().make() : app.Window().make()
+        delay(0.1)
         appData = getApp(target, { activate })
     }
 

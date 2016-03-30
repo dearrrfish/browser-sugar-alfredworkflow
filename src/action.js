@@ -12,7 +12,7 @@ class Action {
         this.opts = {}
         opts.forEach(opt => {
             if (!Array.isArray(opt)) { opt = [opt] }
-            let [ optName, optTest, defaultValue, required, sanitizer, description ] = opt
+            let [ optName, description, optTest, defaultValue, required, sanitizer ] = opt
             let userDefaultValue = getUserDefaults(name, 'options', optName)
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.opts[optName] = {
@@ -35,7 +35,7 @@ class Action {
         this.flags = {}
         flags.forEach(flag => {
             if (!Array.isArray(flag)) { flag = [flag] }
-            let [ flagName, flagTest, defaultValue, description ] = flag
+            let [ flagName, description, flagTest, defaultValue ] = flag
             let userDefaultValue = getUserDefaults(name, 'flags', flagName)
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.flags[flagName] = {
@@ -55,11 +55,11 @@ class Action {
 
     serialize() {
         return JSON.stringify({
-            name: this.name,
-            title: this.title,
-            flags: Array.from(this.getQueryFlags()),
-            options: this.getQueryOptions({ allowEmpty: false }),
-            notes: this.query.notes
+            name    : this.name,
+            title   : this.title,
+            flags   : Array.from(this.getQueryFlags()),
+            options : this.getQueryOptions({ allowEmpty : false }),
+            notes   : this.query.notes
         })
     }
 

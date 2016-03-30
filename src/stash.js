@@ -2,7 +2,7 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    getFromToBrowsers, getAppData, closeTab, readFromFile, writeToFile
+    getFromToBrowsers, getAppData, closeTab, readFromFile, writeToFile, logError
 } from './utils'
 
 const STASH_FILE = 'stash.json'
@@ -11,9 +11,10 @@ const STASH_FILE = 'stash.json'
 class Stash extends Action {
 
     preview() {
-        let preview = new Preview()
-        let options = this.getQueryOptions()
-        let { clone, dedupe, reverse } = this.getQueryFlags(true)
+        const preview = new Preview()
+        const options = this.getQueryOptions()
+        const { clone, dedupe, reverse } = this.getQueryFlags(true)
+        const notes = this.getQueryNotes()
 
         let xml = this.previewOptionSelects(['browsers'], preview, options, ['from'])
         if (xml) { return xml }
@@ -26,7 +27,7 @@ class Stash extends Action {
             return this.previewOptionSelectsError(err, preview, 'from')
         }
 
-        const { tabs } = getAppData(fromBrowser, ['tabs'])
+        const { tabs, browserType } = getAppData(fromBrowser, ['tabs', 'browserType'])
         if (!tabs || !tabs.length) {
             return this.previewOptionSelectsError(`No active tab in ${fromBrowser}`,
                                                   preview,
@@ -39,14 +40,18 @@ class Stash extends Action {
                 options: { from: fromBrowser }
             })
 
+            const subtitle = `Stash all tabs to group "${notes || 'Untitled'}": ${url}`
+
             const item = {
                 arg: query,
                 autocomplete: query,
                 title,
-                subtitle: url,
+                subtitle,
                 //subtitle_shift: ...,
                 text_copy: `[${title}](${url})`,
-                text_largetype: query
+                text_largetype: query,
+                icon: `browser_${browserType}.png`,
+                icon_fileicon: `/Applications/${fromBrowser}.app`
             }
 
             preview.add(item, 999)
@@ -83,7 +88,7 @@ class Stash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            console.log(`Read file content error - ${STASH_FILE}: `, err)
+            logError(err)
         }
         stashList = stashList || []
 
@@ -92,7 +97,7 @@ class Stash extends Action {
 
         if (!clone) { closeTab(fromBrowser, { closeWindow: true }) }
 
-        return `Stashed tabs of ${fromBrowser}!`
+        return `Stashed all tabs of ${fromBrowser}!`
     }
 
 }
@@ -103,11 +108,11 @@ export default new Stash({
     title: 'Stash Tabs',
     // opt: [ name, test, default, required, sanitizer]
     opts: [
-        ['from', 1]
+        ['from', 'Source browser to get list of tabs to stash', 1]
     ],
     // flag: [ name, test, default]
     flags: [
-        ['clone', 1]
+        ['clone', 'Do not close tabs after saved to stash', 1]
     ]
 })
 

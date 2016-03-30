@@ -68,7 +68,6 @@ class Switcher extends Action {
         let fromBrowser, toBrowser
         [ fromBrowser, toBrowser ] = getFromToBrowsers(from, to, reverse)
 
-        let resp = ''
         if (index === 'all') {
             const { tabs } = getAppData(fromBrowser, ['tabs'])
             if (!tabs || !tabs.length) {
@@ -97,17 +96,17 @@ class Switcher extends Action {
 export default new Switcher({
     name: 'switch',
     title: 'Switch Browser',
-    // opt: [ name, test, default, required, sanitizer]
+    // opt: [ name, description, test, default, required, sanitizer]
     opts: [
-        ['from', 1],
-        ['to', 1],
-        ['index', 1, null, false, ['all', Number.parseInt]]
+        ['from', 'Source browser to switch tab(s) from', 1],
+        ['to', 'Target browser to switch tabs(s) to', 1],
+        ['index', 'Tab index number', 1, null, false, ['all', Number.parseInt]]
     ],
-    // flag: [ name, test, default]
+    // flag: [ name, test, default, description]
     flags: [
-        ['clone', 1],
-        ['dedupe', 1, true],
-        ['reverse', 1]
+        ['clone', 'Keep original tab after switch', 1],
+        ['dedupe', 'Deduplicate URL in target browser', 1, true],
+        ['reverse', 'Reverse lookups of source and target browsers', 1]
     ]
 })
 

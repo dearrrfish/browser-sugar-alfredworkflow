@@ -18,10 +18,10 @@ const PRESETS = {
         'action_stash'   : 'action_stash.png',
         'action_unstash' : 'action_unstash.png',
 
-        'actionflag_on'  : 'actionflag_on.png',
-        'actionflag_off' : 'actionflag_off.png',
-        'actionflagvalue_checked': 'actionflagvalue_checked.png',
-        'actionflagvalue_unchecked': 'actionflagvalue_unchecked.png',
+        'actionflag_on'             : 'actionflag_on.png',
+        'actionflag_off'            : 'actionflag_off.png',
+        'actionflagvalue_checked'   : 'actionflagvalue_checked.png',
+        'actionflagvalue_unchecked' : 'actionflagvalue_unchecked.png',
 
     },
     //titlePrefix: {

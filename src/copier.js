@@ -49,7 +49,7 @@ class Copier extends Action {
                     autocomplete: query,
                     title,
                     subtitle: url,
-                    //subtitle_shift: ...,
+                    subtitle_alt: `Copy data from all ${tabs.length} tabs.`,
                     text_copy: `[${title}](${url})`,
                     text_largetype: query,
                     icon: `browser_${browserType}.png`,
@@ -86,14 +86,45 @@ class Copier extends Action {
 
     run() {
         const { from, index } = this.getQueryOptions({ allowEmpty: false, sanitize: true })
-        const clips = Array.from(this.getQueryFlags())
+        let clips = this.getQueryFlags()
 
-        const data = getAppData(from, clips, { index, stringify: true })
-        const text = clips.map(type => data[type] || '').join('\n')
-        //console.log(JSON.stringify(data))
-        theClipboard(text)
+        if (!clips.size) {
+            return `No copy flag was given (${Object.keys(this.flags).join(' | ').toUpperCase()})`
+        }
 
-        return `Copied ${clips.join(',').toUpperCase()} from ${from}.`
+        if (index === 'all') {
+            clips.delete('tabs')    // `tabs` flag is unavailable here
+            const extraClips = new Set(['selection', 'markdown'].filter(f => clips.has(f)))
+            clips = Array.from(clips)
+
+            let { tabs } = getAppData(from, ['tabs'])
+            tabs = tabs || []
+            const text = tabs.map(({ url, title, index }) => {
+                let data = { url, title }
+                if (extraClips.size) {
+                    const extraData = getAppData(from, extraClips, { index })
+                    data = Object.assign(data, extraData)
+                }
+
+                return clips.map(type => data[type] || '').join('\n')
+
+            }).join('\n')
+
+            theClipboard(text)
+
+            return `Copied ${clips.join(',').toUpperCase()} from all tabs in ${from}`
+
+        }
+        else {
+            clips = Array.from(clips)
+            const data = getAppData(from, clips, { index, stringify: true })
+            const text = clips.map(type => data[type] || '').join('\n')
+            //console.log(JSON.stringify(data))
+            theClipboard(text)
+
+            return `Copied ${clips.join(',').toUpperCase()} from ${from}.`
+        }
+
     }
 
 }
@@ -104,15 +135,16 @@ export default new Copier({
     title: 'Super Copier',
     // opt: [ name, test, default, required, sanitizer]
     opts: [
-        ['from', 1],
-        ['index', 1, null, false, Number.parseInt]
+        ['from', 'Source application to copy data from', 1],
+        ['index', 'Tab index number if available', 1, null, false, ['all', Number.parseInt]]
     ],
     // flag: [ name, test, default]
     flags: [
-        ['url', 1],
-        ['title', 1, true],
-        ['selection', 1],
-        ['tabs', 2]
+        ['url', 'Copy URL', 1],
+        ['title','Copy tab title or application name', 2],
+        ['selection', 'Copy text of selection', 1],
+        ['tabs', 'Copy tabs data', 2],
+        ['markdown', 'Copy URL and title in Markdown format', 1]
     ]
 })
 

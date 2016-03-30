@@ -2,7 +2,8 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    frontmostApp, getFromToBrowsers, openUrls, readFromFile, writeToFile, getTester
+    getBrowser, getFromToBrowsers, openUrls, getDefaultBrowser,
+    readFromFile, writeToFile, getTester, logError
 } from './utils'
 
 const STASH_FILE = 'stash.json'
@@ -23,7 +24,7 @@ class UnStash extends Action {
             toBrowser = getFromToBrowsers(options.to, null, true)[1]
         }
         catch (err) {
-            return this.previewOptionSelectsError(err, preview, 'to')
+            logError(err)
         }
 
         let stashList
@@ -31,7 +32,7 @@ class UnStash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            console.log(`Read file content error - ${STASH_FILE}: `, err)
+            logError(err)
         }
         stashList = stashList || []
 
@@ -43,17 +44,25 @@ class UnStash extends Action {
             }
 
             appName = toBrowser || appName
+            const browserType = getBrowser(appName)[1]
+
             const query = this.constructQueryString({
                 options: { index: i, to: appName },
                 notes: ''
             })
 
+            const text = tabs.map(
+                ([url, title]) => `[${decodeURIComponent(title)}](${decodeURIComponent(url)})`
+            ).join('\n')
+
             preview.add({
                 arg: query,
-                autocomplete: query,
-                title: name,
+                title: `${name} [${tabs.length}]`,
                 subtitle: `Open ${tabs.length} stashed tabs in ${appName}`,
-                text_largetype: query
+                text_copy: text,
+                text_largetype: text,
+                icon: `browser_${browserType}.png`,
+                icon_fileicon: `/Applications/${appName}.app`
             })
         });
 
@@ -62,9 +71,13 @@ class UnStash extends Action {
                 options: { index: null },
                 notes: ''
             })
+
+            const title = stashList.length ? `No matched stash was found for '${notes}'` :
+                                             'No stash was saved.'
+
             preview.addError(this, {
                 autocomplete: query,
-                title: `No matched stash group was found for ${notes}`,
+                title,
                 subtitle: 'Press ENTER / TAB to search again.'
             })
         }
@@ -83,7 +96,7 @@ class UnStash extends Action {
             toBrowser = getFromToBrowsers(to, null, true)[1]
         }
         catch (err) {
-            console.log(err)
+            logError(err)
         }
 
         let stashList
@@ -91,7 +104,7 @@ class UnStash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            console.log(`Read file content error - ${STASH_FILE}: `, err)
+            logError(err)
         }
         stashList = stashList || []
 
@@ -110,7 +123,7 @@ class UnStash extends Action {
             writeToFile(stashList, STASH_FILE)
         }
 
-        return `Opened ${tabs.length} tabs in ${target} << [ ${decodeURIComponent(name)} ]`
+        return `Unstashed ${tabs.length} tabs in ${target} << [ ${decodeURIComponent(name)} ]`
 
     }
 
@@ -122,14 +135,14 @@ export default new UnStash({
     title: 'Un-Stash Tabs',
     // opt: [ name, test, default, required, sanitizer, description]
     opts: [
-        ['to', 1],
-        ['index', 1, null, false, Number.parseInt]
+        ['to', 'Target browser to unstash tabs to.', 1],
+        ['index', 'Tab index number', 1, null, false, Number.parseInt]
     ],
     // flag: [ name, test, default, description]
     flags: [
-        ['clone', 1, false],
-        ['newwindow', 1, true],
-        ['dedupe', 1]
+        ['clone', 'Do not delete stash record after unstashed', 1, false],
+        ['newwindow', 'Unstash tabs into new window', 1, true],
+        ['dedupe', 'Deduplicate URLs when openning in target window', 1]
     ]
 })
 

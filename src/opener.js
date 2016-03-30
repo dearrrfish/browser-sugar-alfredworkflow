@@ -31,6 +31,7 @@ class Opener extends Action {
 
         const text = getAppData(appName, ['selection'], { source: _app }).selection || theClipboard()
         const urls = validateUrl(text, true)
+        const [ inBrowser, inBrowserType ] = getBrowser(options.in)
 
         if (urls.length) {
             urls.forEach(url => {
@@ -39,10 +40,11 @@ class Opener extends Action {
                     arg: query,
                     //autocomplete: query,
                     title: url,
-                    subtitle: `Open detected URL in ${options.in}`,
+                    subtitle: `Open detected URL in ${inBrowser}`,
                     text_copy: `[](${url})`,
                     text_largetype: text,
-                    icon_fileicon: `/Applications/${options.in}.app`
+                    icon: `browser_${inBrowserType}.png`,
+                    icon_fileicon: `/Applications/${inBrowser}.app`
                 }
                 preview.add(item, 999)
             })
@@ -81,11 +83,11 @@ export default new Opener({
     title: 'Smart Opener',
     // opt: [ name, test, default, required, sanitizer]
     opts: [
-        ['in', 1]
+        ['in', 'Target browser to open URL(s) in', 1]
     ],
     // flag: [ name, test, default]
     flags: [
-        ['dedupe', 1, true]
+        ['dedupe', 'Deduplicate URLs in target browser before open new tab', 1, true]
     ]
 })
 
