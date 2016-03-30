@@ -82,7 +82,7 @@ class Switcher extends Action {
         }
         else {
             const { url, title } = getAppData(fromBrowser, ['url', 'title'], { index })
-            openUrl(url, toBrowser, { dedupe, activate })
+            openUrl(url, toBrowser, { dedupe })
             if (!clone) { closeTab(fromBrowser, { index }) }
 
             return `${from} >> ${to} | ${title}`

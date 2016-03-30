@@ -200,7 +200,7 @@ class Action {
             let prefix = ''
             let [ head, ...rest ] = flag.split(/^[!@]/)
             if (rest.length) {
-                prefix = head
+                prefix = flag[0]
                 flag = rest.join('')
             }
 
