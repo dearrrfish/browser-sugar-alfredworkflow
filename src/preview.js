@@ -6,13 +6,27 @@ import { BROWSERS, getApp, getTester, isTrue } from './utils'
 const PRESETS = {
     icons: {
         'error'          : 'error.png',
+
         'browser'        : 'browser.png',
         'browser_safari' : 'browser_safari.png',
         'browser_chrome' : 'browser_chrome.png',
+
+        'action'         : 'icon.png',
+        'action_switch'  : 'action_switch.png',
+        'action_copy'    : 'action_copy.png',
+        'action_open'    : 'action_open.png',
+        'action_stash'   : 'action_stash.png',
+        'action_unstash' : 'action_unstash.png',
+
+        'actionflag_on'  : 'actionflag_on.png',
+        'actionflag_off' : 'actionflag_off.png',
+        'actionflagvalue_checked': 'actionflagvalue_checked.png',
+        'actionflagvalue_unchecked': 'actionflagvalue_unchecked.png',
+
     },
-    titlePrefix: {
-        'error': '(；￣Д￣）',
-    }
+    //titlePrefix: {
+        //'error': '(；￣Д￣）',
+    //}
 }
 
 class Preview extends Items {
@@ -58,7 +72,7 @@ class Preview extends Items {
                 uid           : `app_frontmost`,
                 valid         : 'no',
                 autocomplete  : action.constructQueryString(override),
-                title         : `[FRONT                                : ${appName}] ${title}`,
+                title         : `[FRONT: ${appName}] ${title}`,
                 subtitle      : subtitle,
                 icon_fileicon : `/Applications/${appName}.app`
             }
@@ -87,7 +101,7 @@ class Preview extends Items {
 
             const override = this.getOverride(opt, firstBrowser)
             const item = {
-                _type         : `browser_${firstBrowser}`,
+                _type         : `browser_${b}`,
                 uid           : `browser_${firstBrowser}`,
                 valid         : 'no',
                 autocomplete  : action.constructQueryString(override),
@@ -122,20 +136,24 @@ class Preview extends Items {
             if (filter && !nameTest(filter)) { continue }
 
             const override = this.getOverride(opt, flag)
-            this.add({
-                _type        : `actionflag_${flag}`,
-                uid          : `actionflag_${flag}`,
+            const _type = `actionflag_${flag}`
+            const item = {
+                _type,
+                uid          : _type,
                 valid        : 'no',
                 autocomplete : action.constructQueryString(override),
-                title        : `${flag} [${isTrue(defaultValue) ? 'ON' : 'OFF'}]`,
-                subtitle     : `${action.name}/${flag}: ${description || ''}`
-            }, insertBefore)
+                title        : flag,
+                subtitle     : `${action.name}/${flag}: ${description || ''}`,
+                icon         : `actionflag_${isTrue(defaultValue) ? 'on' : 'off'}.png`,
+            }
 
+            this.add(item, insertBefore)
         }
     }
 
 
     addActionFlagValues(action, flag, filter, opt, insertBefore) {
+        const { defaultValue, description } = action.flags[flag];
         ['on', 'off'].forEach(v => {
             if (filter) {
                 const fuzzyTest = getTester(v, 'fuzzy_i')
@@ -143,14 +161,14 @@ class Preview extends Items {
             }
             const _type = `actionflagvalue_${v}`
             const query = action.constructQueryString(this.getOverride(opt, v))
-            const {defaultValue, description} = action.flags[flag]
             this.add({
                 _type,
                 //uid          : _type,
                 arg          : query,
-                autocomplete : query,
-                title        : `${v}${isTrue(v) == isTrue(defaultValue) ? ' [✓]' : ''}`,
-                subtitle     : `${action.name}/${flag}: ${description || ''}`
+                //autocomplete : query,
+                title        : v,
+                subtitle     : `${action.name}/${flag}: ${description || ''}`,
+                icon         : `actionflagvalue_${isTrue(defaultValue) === isTrue(v) ? 'checked' : 'unchecked'}.png`
             }, insertBefore)
         })
     }

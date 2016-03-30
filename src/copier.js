@@ -52,11 +52,12 @@ class Copier extends Action {
                     //subtitle_shift: ...,
                     text_copy: `[${title}](${url})`,
                     text_largetype: query,
+                    icon: `browser_${browserType}.png`,
                     icon_fileicon: `/Applications/${appName}.app`
                 }
 
                 if (active) { item.title = '[ACTIVE] ' + item.title }
-                item.title = `📋<<  ${item.title}`,
+                item.title = `✄ ${item.title}`,
 
                 preview.add(item, (active ? 0 : 999))
 
@@ -69,12 +70,13 @@ class Copier extends Action {
                 options: { from: appName }
             })
             preview.add({
-                arg: query,
-                autocomplete: query,
-                title: `📋<<  ${title || appName}`,
-                subtitle: '',
-                text_copy: appName,
-                text_largetype: query
+                arg            : query,
+                autocomplete   : query,
+                title          : `✄ ${title || appName}`,
+                subtitle       : '',
+                text_copy      : appName,
+                text_largetype : query,
+                icon_fileicon  : `/Applications/${appName}.app`
             })
 
         }

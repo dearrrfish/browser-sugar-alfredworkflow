@@ -77,7 +77,12 @@ class Items {
             switch (p) {
                 // apply icon
                 case 'icons':
-                    item.icon = item.icon || preset[item._type] || preset[_type]
+                    const icon = item.icon || preset[item._type] || preset[_type]
+                    if (icon) {
+                        item.icon = icon
+                        delete item.icon_fileicon
+                        delete item.icon_filetype
+                    }
                     break
 
                 // prepare title

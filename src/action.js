@@ -316,7 +316,7 @@ class Action {
                         })
                         xml = preview.buildXML()
                     }
-                    else if (items.length === 1) {
+                    else if (items.length === 1 && v !== '') {
                         options[k] = items[0].get('_type').split('_')[1]
                         preview.clear()
                     }

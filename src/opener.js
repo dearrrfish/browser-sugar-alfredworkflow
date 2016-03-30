@@ -30,26 +30,28 @@ class Opener extends Action {
         }
 
         const text = getAppData(appName, ['selection'], { source: _app }).selection || theClipboard()
-        const url = validateUrl(text)
+        const urls = validateUrl(text, true)
 
-        if (url) {
-            const query = this.constructQueryString({ notes: url })
-            const item = {
-                arg: query,
-                autocomplete: query,
-                title: url,
-                subtitle: `Open detected URL in ${options.in}`,
-                text_copy: `[](${url})`,
-                text_largetype: text,
-                icon_fileicon: `/Applications/${options.in}.app`
-            }
-            preview.add(item)
+        if (urls.length) {
+            urls.forEach(url => {
+                const query = this.constructQueryString({ notes: url })
+                const item = {
+                    arg: query,
+                    //autocomplete: query,
+                    title: url,
+                    subtitle: `Open detected URL in ${options.in}`,
+                    text_copy: `[](${url})`,
+                    text_largetype: text,
+                    icon_fileicon: `/Applications/${options.in}.app`
+                }
+                preview.add(item, 999)
+            })
             return preview.buildXML()
         }
         else {
             preview.addError(this, {
                 title: 'No valid URL was detected.',
-                subtitle: `Origin text: ${text}`,
+                subtitle: `Origin text: ${('' + text).replace(/\r?\n/g, ' ')}`,
                 text_largetype: text
             })
         }
@@ -68,7 +70,7 @@ class Opener extends Action {
 
         let [ url, appName ] = openUrl(notes, options.in, { dedupe })
 
-        return `Opened URL in ${options.in}: ${url}`
+        return `Opened URL in ${appName}: ${url}`
     }
 
 }

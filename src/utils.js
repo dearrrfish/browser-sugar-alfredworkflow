@@ -104,6 +104,17 @@ function theClipboard(sth) {
 }
 
 
+function _getSelectionByCopy() {
+    const clipboardBackup = theClipboard()
+    theClipboard('__frontmostapp_selection__')
+    let selection = theClipboard()
+    // TODO better way to detect selection over this buggy workaround
+    if (selection === clipboardBackup) { selection = null }
+    else { theClipboard(clipboardBackup) }
+    return selection
+}
+
+
 // propsIn: {appName}
 function getApp(appName = frontmostApp(), { activate = false, appOnly = false, index } = {}) {
     appName = /^frontmostapp$/i.test(appName) ? frontmostApp() : appName
@@ -181,25 +192,33 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
 
     // selected text
     if (clips.has('selection')) {
+
+
         try {
             // do javascript trick to get selection text in browser tab
             if (targetTab) {
-                const js = "''+getSelection()"
+                // http://stackoverflow.com/questions/10990690/content-getselection-is-not-working-when-selected-text-is-in-iframe
+                const js = "function _getSelection(w){var r=w.getSelection();for(var i=0;!r&&i<w.frames.length;i++){r=_getSelection(w.frames[i])}return r;}''+_getSelection(window)"
                 if (browserType === 'safari') {
                     data.selection = app.doJavaScript(js, { in: targetTab })
                 }
                 else if (browserType === 'chrome') {
                     data.selection = targetTab.execute({ javascript: js })
                 }
+
+                if (data.selection[0] === '\u0001') {
+                    const frontApp = frontmostApp()
+                    app.activate()
+                    delay(0.1)  // make sure target app goes frontmost
+                    data.selection = _getSelectionByCopy()
+                    if (app.name() !== frontApp) {
+                        getApp(frontApp, { activate: true, appOnly: true })
+                    }
+                }
             }
 
             else if (app.frontmost()) {
-                const clipboardBackup = theClipboard()
-                theClipboard('__frontmostapp_selection__')
-                data.selection = theClipboard()
-                // TODO better way to detect selection over this buggy workaround
-                if (data.selection === clipboardBackup) { data.selection = null }
-                else { theClipboard(clipboardBackup) }
+                data.selection = _getSelectionByCopy()
             }
         }
         catch (err) {
@@ -208,12 +227,12 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
     }
 
     // From here, rest flags require native window interface
-    //if (!Array.isArray(windows) || !windows.length) {
-        //// Just return empty data instead when no active window detected,
-        //// or because it does not support standard suite
-        //return data
-        ////throw new Error(`No active window was found in ${appName}`)
-    //}
+    if (!Array.isArray(windows) || !windows.length) {
+        // Just return empty data instead when no active window detected,
+        // or because it does not support standard suite
+        return data
+        //throw new Error(`No active window was found in ${appName}`)
+    }
 
     // all tabs
     if (clips.has('tabs')) {
@@ -293,13 +312,15 @@ function openUrl(_url, target, { activate = true, dedupe, newTab = true, backgro
     if (dedupe) {
         windows.some((win) => {
             win.tabs().some((tab, i) => {
-                // TODO more wise url match method
-                console.log(tab.url(), ' ??? ', url)
-                const tabUrl = tab.url().replace(/[\/?&]+$/, '').toLowerCase()
-                const cleanUrl = url.replace(/[\/?&]+$/, '').toLowerCase()
-                if (tabUrl === cleanUrl) {
-                    exists = [win, tab, i + 1];
-                    return true
+                //console.log(tab.url(), ' ??? ', url)
+                let tabUrl = tab.url()
+                if (typeof tabUrl === 'string') {
+                    tabUrl = tabUrl.replace(/[\/?&]+$/, '').toLowerCase()
+                    const cleanUrl = url.replace(/[\/?&]+$/, '').toLowerCase()
+                    if (tabUrl === cleanUrl) {
+                        exists = [win, tab, i + 1];
+                        return true
+                    }
                 }
 
                 return exists   // false
@@ -334,7 +355,7 @@ function openUrl(_url, target, { activate = true, dedupe, newTab = true, backgro
     }
 
     // always bring window to front within app
-    //win.index = 1
+    win.index = 1
 
     return [url, appName]
 }
@@ -361,7 +382,8 @@ function openUrls(urls, target, { activate = true, dedupe, newWindow, background
 
 // http://forums.devshed.com/javascript-development-115/regexp-to-match-url-pattern-493764.html
 // https://github.com/ttscoff/popclipextensions/blob/master/OpenURLS.popclipext/openurls.rb
-function validateUrl(str, debug) {
+function validateUrl(str, all, debug) {
+    const urls = []
     if (typeof str === 'string') {
         const re = new RegExp(
             '(?:(?:https?:\\/\\/))?' + // protocol
@@ -371,15 +393,19 @@ function validateUrl(str, debug) {
             '(:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
             '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
             '(\\#[-a-z\\d_]*)?' // fragment locater
-            , 'i')
+            , 'ig')
 
-        const match = re.exec(str)
-        if (debug) { console.log(match) }
-        if (match && typeof match[0] === 'string') {
-            return match[0]
+        let match = re.exec(str)
+        while (match) {
+            if (debug) { console.log(match) }
+            if (typeof match[0] === 'string') {
+                urls.push(match[0])
+                if (!all) { break }
+            }
+            match = re.exec(str)
         }
     }
-    return null
+    return all ? urls : urls[0]
 }
 
 

@@ -29,7 +29,7 @@ class Switcher extends Action {
                                                   (reverse ? 'to' : 'from'))
         }
 
-        tabs.forEach(({ /*browser, browserType, */url, title, index, active }) => {
+        tabs.forEach(({ /*browser, */browserType, url, title, index, active }) => {
 
             const query = this.constructQueryString({
                 options: {
@@ -40,8 +40,9 @@ class Switcher extends Action {
             })
 
             const item = {
+                _type: `browser_${browserType}`,
                 arg: query,
-                autocomplete: query,
+                //autocomplete: query,
                 title,
                 subtitle: url,
                 //subtitle_shift: ...,
