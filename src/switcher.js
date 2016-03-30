@@ -1,7 +1,7 @@
 
 import Preview from './preview'
 import Action from './action'
-import { getFromToBrowsers, getAppData, openUrl, closeTab } from './utils'
+import { getFromToBrowsers, getAppData, openUrl, openUrls, closeTab } from './utils'
 
 
 class Switcher extends Action {
@@ -45,7 +45,7 @@ class Switcher extends Action {
                 //autocomplete: query,
                 title,
                 subtitle: url,
-                //subtitle_shift: ...,
+                subtitle_alt: `Switch all tabs to ${toBrowser}`,
                 text_copy: `[${title}](${url})`,
                 text_largetype: query
             }
@@ -68,11 +68,26 @@ class Switcher extends Action {
         let fromBrowser, toBrowser
         [ fromBrowser, toBrowser ] = getFromToBrowsers(from, to, reverse)
 
-        const { url, title } = getAppData(from, ['url', 'title'], { index })
-        openUrl(url, to, { dedupe })
-        if (!clone) { closeTab(from, { index }) }
+        let resp = ''
+        if (index === 'all') {
+            const { tabs } = getAppData(fromBrowser, ['tabs'])
+            if (!tabs || !tabs.length) {
+                throw new Error(`No tab in front window of ${fromBrowser}.`)
+            }
+            const urls = tabs.map(tab => tab.url)
+            openUrls(urls, toBrowser, { noValidation: true })
+            if (!clone) { closeTab(fromBrowser, { closeWindow: true })}
 
-        return `${from} >> ${to} | ${title}`
+            return `${from} >> ${to} | ${urls.length} tabs`
+
+        }
+        else {
+            const { url, title } = getAppData(fromBrowser, ['url', 'title'], { index })
+            openUrl(url, toBrowser, { dedupe, activate })
+            if (!clone) { closeTab(fromBrowser, { index }) }
+
+            return `${from} >> ${to} | ${title}`
+        }
 
     }
 
@@ -86,7 +101,7 @@ export default new Switcher({
     opts: [
         ['from', 1],
         ['to', 1],
-        ['index', 1, null, false, Number.parseInt]
+        ['index', 1, null, false, ['all', Number.parseInt]]
     ],
     // flag: [ name, test, default]
     flags: [

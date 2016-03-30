@@ -66,7 +66,7 @@ class Stash extends Action {
         [ fromBrowser ] = getFromToBrowsers(from)
 
         let { tabs } = getAppData(fromBrowser, ['tabs'])
-        if (!tabs.length) { throw new Error(`No tab in front window of ${browser}.`) }
+        if (!tabs || !tabs.length) { throw new Error(`No tab in front window of ${browser}.`) }
 
         // Encode non-latin characters to avoid error when writing to file
         tabs = tabs.map(({ url, title }) => [ encodeURIComponent(url), encodeURIComponent(title) ])

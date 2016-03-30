@@ -1,6 +1,7 @@
 
 import Preview from './preview'
 import actions from './actions'
+import { logError } from './utils'
 
 run(false)  // rollupjs build hack
 
@@ -43,7 +44,7 @@ function run(argv = []) {
         resp = action[callType]()
     }
     catch (err) {
-        console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+        logError(err)
         resp = err.message || err
         if (callType === 'preview' || callType === 'defaults') {
             const preview = new Preview()

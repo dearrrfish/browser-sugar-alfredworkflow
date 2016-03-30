@@ -539,6 +539,9 @@ function isTrue(val) {
     }
 }
 
+function logError(err) {
+    console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+}
 
 export {
     BROWSERS, getBrowser, getFromToBrowsers,
@@ -547,6 +550,6 @@ export {
     openUrl, openUrls, validateUrl, closeTab,
     readFromFile, writeToFile,
     getUserDefaults, setUserDefaults,
-    getTester, isTrue
+    getTester, isTrue, logError
 }
 

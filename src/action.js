@@ -146,8 +146,14 @@ class Action {
 
             if (value == null) { value = this.opts[opt].defaultValue }
 
-            if (sanitize && typeof this.opts[opt].sanitizer === 'function') {
-                value = this.opts[opt].sanitizer(value)
+            if (sanitize) {
+                let sanitizer = this.opts[opt].sanitizer
+                if (!Array.isArray(sanitizer)) { sanitizer = [sanitizer] }
+                sanitizer.some(s => {
+                    if (value === s) { return true }
+                    if (typeof s === 'function') { value = s(value); return true }
+                    return false
+                })
             }
 
             if (value != null) { options[opt] = value }
@@ -172,8 +178,13 @@ class Action {
     }
 
 
-    parseQueryString(qs = '') {
-        let [ flags = '', options = '', ...notes ] = qs.split(';')
+    parseQueryString(qs = '', delimeter = ';') {
+        let [ flags = '', options = '', ...notes] = qs.trim().split(delimeter)
+
+        // overrides args
+        let overrides = notes.length > 1 ? notes.pop() : ''
+
+        // join notes string
         notes = notes.join(';')
 
         // parse flags
@@ -258,8 +269,24 @@ class Action {
             }
         }
 
-        return [ queryFlags, queryOptions, notes ]
 
+        // parse overrides
+        if(overrides) {
+            const [ ovrFlags, ovrOptions, ...ovrNotes ] = this.parseQueryString(overrides, '|')
+            console.log(JSON.stringify(ovrOptions))
+            if (ovrFlags.size) {
+                queryFlags = new Set([...queryFlags, ...ovrFlags])
+            }
+            if (Object.keys(ovrOptions).length) {
+                queryOptions = this.assignQueryOptions(ovrOptions, queryOptions, true)
+                console.log(JSON.stringify(queryOptions))
+            }
+            if (ovrNotes.length) {
+                notes = ovrNotes.join(' ')
+            }
+        }
+
+        return [ queryFlags, queryOptions, notes ]
     }
 
     assignQueryOptions(props, options = {}, overwrite) {
@@ -284,9 +311,7 @@ class Action {
 
         notes = ('' + notes) || this.query.notes
 
-        let qs = [flags, options]
-        if (notes) { qs.push(notes) }
-        qs = qs.join(' ; ')
+        let qs = [flags, options, notes].join(' ; ')
 
         if (withActionName) { qs = this.name + ' ' + qs }
 
