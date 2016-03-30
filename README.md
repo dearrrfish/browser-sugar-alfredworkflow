@@ -1,82 +1,171 @@
-## Browser Switcher for Alfred
+## Browser Sugar Workflow for Alfred2
 
-Automation scripts of switching tabs between Safari/Chrome; copy tab information; open url from selection or clipboard, etc.
+> Scripting workflows to play with browser tabs, and more...
+> ***Require OS X Yosemite+***
 
-***Require OS X Yosemite+***
 
-### Usage
 
-Basic pattern: `bs <action> [option|flag]* (& <action> [option|flag]*)*`
+### Base Syntax
 
-#### Actions:
+**Actions:** **b**<action> [*flags*] **;** [*option* **:** *value*]; [*notes*|*extras*...]
 
-- `switch` or  `sw` - switch current tab to another browser
-- `copy` or `cp` - copy tab/application data to clipboard
-- `open` or `op` - open url from selected text of current application or the clipboard
+**Settings:** **bset** <action> ; **set_flag:** *flag* **set_value:** *value*
 
-#### Options:
+- <action> - keyword to trigger action, e.g. `switch`, `unstash`
+- *flags* - on/off value, e.g. `clone`
+- *option: value* - key-value pairs of options, e.g. `from: Google Chrome`
+- *notes | extras* - additional text data, e.g. `Stash Group Name on Feb 29`
 
-- `clone` or `c` - keep original tab after switching, available for action `switch`
-- `dedupe` or `dd` - jump to existing tab if url matched in target browser instead of creating new tab, available for action `switch` and `open`
-- `reverse` or `re` - reverse front and target browsers for switching tabs, available for action `switch`
+
+
+### Switch Tabs
+
+Switch tabs between supported browsers.
+
+#### Syntax: 
+
+Action: `bswitch [clone|dedupe|reverse]; [from:|to:|index:]`
+
+Set Default Flags: `bset switch`
 
 #### Flags:
 
-- `url` - copy url of current tab to clipboard
-- `title` - copy tab title or application name to clipboard
-- `selection` - copy selection content/text of current application to clipboard
-- default flags: `url title selection`
+- ***clone*** - Keep original tab(s) after switching
+- ***dedupe*** - Deduplicate URL in target browser before opening a new tab
+- ***reverse*** - Reverse lookups of source and target browsers
 
-#### Actions flow:
+#### Options:
 
-Use `&` between commands to execute a sequence of actions.
+- ***from*** - Source browser to switch tab(s) from, full application name or browser types
+- ***to*** - Target browser to switch tabs(s) to, full application name or browser types
+- ***index*** - Tab index number in the browser window to execute the workflow
+  - Set *index* to `all` to switch all tabs, or use action modifier `alt`
 
-#### Aliases:
 
-- `bss` = `bs switch`
-- `bsc` = `bs copy`
-- `bso` = `bs open`
 
-#### Examples:
+### Copy Data of Application/Browser/Tab(s)
 
-```shell
-# Switch current tab to another browser, keep original tab open, and check if any duplicated tab in target browser
-bs switch clone dedupe
+#### Syntax: 
 
-# Bring front tab of background browser to current browser
-bs switch reverse
+Action: `bcopy [url|title|selection|markdown|tabs] ; [from:|index:]`
 
-# Copy url and title only
-bs copy url title
-# => https://www.google.com/
-# 	 Google
+Set Default Flags: `bset copy`
 
-# Selection or clipboard: "hello world! https://google.com life begins blah blah..."
-# Open url, and check duplicated tabs as well
-bs open dedupe
+#### Flags:
 
-# Copy url and selected text of current tab, then switch to another browser
-bs copy url selection & switch dedupe
-```
+- ***url*** - Copy URL of target window/tab if available
+- ***title*** - Copy browser tab title or application window name
+- ***selection*** - Copy selected text in window/tab if available
+- ***markdown*** - Copy URL and title as a *link* in markdown syntax
+- ***tabs*** - Copy information of tabs in JSON string format
 
-### Customization
+#### Options:
 
-1. Open **Alfred Preferences - Workflows**, find **Browser Switcher**.
-2. Create a new flow taking any existing flow as example.
-3. Modify **Action Script** content, adding default `action/options/flags` you would like.
-   e.g. `osascript -l JavaScript main.js "switch clone dedupe {query}"`
-4. Assign your preferred hotkey and keyword, and you are all set.
+- ***from*** - Source browser to switch tab(s) from, full application name or browser types
+- ***index*** - Tab index number in the browser window to execute the workflow
+  - Set *index* to `all` to switch all tabs, or use action modifier `alt`
+
+
+
+### Open URL(s) From Selection/Clipboard
+
+#### Syntax:
+
+Action: `bopen [dedupe] ; [in:]`
+
+Set Default Flags: `bset open`
+
+#### Flags:
+
+- ***dedupe*** - Deduplicate URL in target browser before opening a new tab
+  - Use action modifier `alt` can open all extracted URLs
+
+#### Options:
+
+- ***in*** - Target browser to open URL(s)
+
+
+
+### Stash Tabs In Browser Window
+
+#### Syntax:
+
+Action: `bstash [clone] ; [from:]; <stash group name>`
+
+Set Default Flags: `bset stash`
+
+#### Flags:
+
+- ***clone*** - Do not close tabs after stashed them to group
+
+#### Options:
+
+- ***from*** - Source browser to get the list of tabs to stash
+
+#### Others:
+
+- ***stash group name*** - Group name saved in the stash file
+
+
+
+### Un-Stash Saved Group Of Tabs
+
+#### Syntax:
+
+Action: `bunstash [clone] ; [to:]; <search>`
+
+Set Default Flags: `bset unstash`
+
+#### Flags:
+
+- ***clone*** - Do not remove stash record after unstashed tabs
+
+#### Options:
+
+- ***to*** - Target browser to restore tabs to
+
+#### Others:
+
+- ***search*** - Search string to filter list of stashed groups
+
+
+
+### User Files
+
+- **stash list** -  located in `$USER_HOME/.config/bs-alfredworkflow/stash.json`
+- **default flags config** - located in `$USER_HOME/.config/bs-alfredworkflow/config.json`
+
+
+
+### JXA Script Syntax
+
+` main.js [preview|run|defaults|set] <flags> ; <options> ; <notes|extras>`
+
+- **preview** - Returns XML content of the query previews in Alfred
+- **run** - Execute the query of action
+- **defaults** - Returns XML content of the settings previews in Alfred
+- **set** - Set default on/off states of flags per action
+
+
+
+### Customizations
+
+1. Create new action from **Actions - Run Script**, choose language **/bin/bash**
+2. Write your own command with the call type of **run**, e.g.
+   `osascript -l JavaScript main.js run "copy markdown; from: Safari"`
+3. Assign a preferred trigger like a **Hot Key**, drag and connect trigger and action and output
+
 
 ### Todo
 
-- `stash` action to save/open multiple tabs at one time
-- Allow to specify source and target browser
-- Add delay and result validation between actions in command flow
+- ~~`stash` action to save/open multiple tabs at one time~~
+- ~~Allow to specify source and target browser~~
+- ~~Add delay and result validation between actions in command flow~~ (Removed the feature of actions flow)
 - Firefox support
-- Configurations of default options/flags
+- Configurations of default options/~~flags~~
 
 ### Licences
 
 MIT
 
-Icons from http://dryicons.com/free-icons/
+Icons from [iconfinder.com](https://www.iconfinder.com)
