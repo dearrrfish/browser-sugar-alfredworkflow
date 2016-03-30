@@ -1,6 +1,6 @@
-## Browser Sugar Workflow for Alfred2
+## Browser Sugar Workflow for Alfred 2
 
-> Scripting workflows to play with browser tabs, and more...
+> Workflow scripts playing with browser tabs, and more...
 > ***Require OS X Yosemite+***
 
 
@@ -13,8 +13,17 @@
 
 - <action> - keyword to trigger action, e.g. `switch`, `unstash`
 - *flags* - on/off value, e.g. `clone`
+  - You can prepend prefix to flags to override default settings
+    - `@` - force flag being **on** state
+    - `!` - force flag being **off** state
+    - priority: `@` > `!` > *no prefix*
+
 - *option: value* - key-value pairs of options, e.g. `from: Google Chrome`
 - *notes | extras* - additional text data, e.g. `Stash Group Name on Feb 29`
+
+
+---
+
 
 
 
@@ -43,6 +52,8 @@ Set Default Flags: `bset switch`
 
 
 
+
+
 ### Copy Data of Application/Browser/Tab(s)
 
 #### Syntax: 
@@ -67,6 +78,8 @@ Set Default Flags: `bset copy`
 
 
 
+
+
 ### Open URL(s) From Selection/Clipboard
 
 #### Syntax:
@@ -83,6 +96,8 @@ Set Default Flags: `bset open`
 #### Options:
 
 - ***in*** - Target browser to open URL(s)
+
+
 
 
 
@@ -108,6 +123,8 @@ Set Default Flags: `bset stash`
 
 
 
+
+
 ### Un-Stash Saved Group Of Tabs
 
 #### Syntax:
@@ -129,11 +146,17 @@ Set Default Flags: `bset unstash`
 - ***search*** - Search string to filter list of stashed groups
 
 
+---
+
+
+
 
 ### User Files
 
 - **stash list** -  located in `$USER_HOME/.config/bs-alfredworkflow/stash.json`
 - **default flags config** - located in `$USER_HOME/.config/bs-alfredworkflow/config.json`
+
+
 
 
 
@@ -148,6 +171,8 @@ Set Default Flags: `bset unstash`
 
 
 
+
+
 ### Customizations
 
 1. Create new action from **Actions - Run Script**, choose language **/bin/bash**
@@ -156,13 +181,20 @@ Set Default Flags: `bset unstash`
 3. Assign a preferred trigger like a **Hot Key**, drag and connect trigger and action and output
 
 
-### Todo
+
+
+### Todos
 
 - ~~`stash` action to save/open multiple tabs at one time~~
 - ~~Allow to specify source and target browser~~
 - ~~Add delay and result validation between actions in command flow~~ (Removed the feature of actions flow)
 - Firefox support
 - Configurations of default options/~~flags~~
+- Configurable notifications
+
+
+
+
 
 ### Licences
 

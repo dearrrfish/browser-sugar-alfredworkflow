@@ -2,7 +2,7 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    getDefaultBrowser, getBrowser, getApp, getAppData, openUrl, validateUrl, theClipboard
+    getDefaultBrowser, getBrowser, getApp, getAppData, openUrl, validateUrl, theClipboard, logError
 } from './utils'
 
 
@@ -24,7 +24,7 @@ class Opener extends Action {
             options.in = options.in || getBrowser(browserType, null, getDefaultBrowser())[0]
         }
         catch (err) {
-            console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+            logError(err)
             const opt = appName ? null : 'in'
             return this.previewOptionSelectsError(err, preview, opt)
         }
@@ -68,7 +68,6 @@ class Opener extends Action {
 
         let notes = this.getQueryNotes()
         notes = notes || getAppData(undefined, ['selection']).selection || theClipboard()
-        console.log('notes: ', notes)
 
         let [ url, appName ] = openUrl(notes, options.in, { dedupe })
 

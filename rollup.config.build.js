@@ -1,5 +1,6 @@
 import babel from 'rollup-plugin-babel'
 import uglify from 'rollup-plugin-uglify'
+import { minify } from 'uglify-js'
 
 
 export default {
@@ -12,7 +13,13 @@ export default {
             plugins: [ 'transform-object-assign' ]
 
         }),
-        uglify()
+        uglify({
+            compress: {
+                dead_code: true,
+                comparisons: true,
+                unused: true
+            }
+        }, minify)
     ],
     dest: 'dist/main.min.js'
 }

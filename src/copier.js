@@ -1,7 +1,7 @@
 
 import Preview from './preview'
 import Action from './action'
-import { getApp, getAppData, theClipboard } from './utils'
+import { getApp, getAppData, theClipboard, logError } from './utils'
 
 
 class Copier extends Action {
@@ -18,7 +18,7 @@ class Copier extends Action {
             _app = getApp(options.from, { index: options.index })
         }
         catch (err) {
-            console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+            logError(err)
             return this.previewOptionSelectsError(err, preview, 'from')
         }
 

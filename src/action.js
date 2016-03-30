@@ -273,13 +273,13 @@ class Action {
         // parse overrides
         if(overrides) {
             const [ ovrFlags, ovrOptions, ...ovrNotes ] = this.parseQueryString(overrides, '|')
-            console.log(JSON.stringify(ovrOptions))
+            //console.log(JSON.stringify(ovrOptions))
             if (ovrFlags.size) {
                 queryFlags = new Set([...queryFlags, ...ovrFlags])
             }
             if (Object.keys(ovrOptions).length) {
                 queryOptions = this.assignQueryOptions(ovrOptions, queryOptions, true)
-                console.log(JSON.stringify(queryOptions))
+                //console.log(JSON.stringify(queryOptions))
             }
             if (ovrNotes.length) {
                 notes = ovrNotes.join(' ')
