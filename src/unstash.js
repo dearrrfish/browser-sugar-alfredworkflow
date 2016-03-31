@@ -3,7 +3,7 @@ import Preview from './preview'
 import Action from './action'
 import {
     getBrowser, getFromToBrowsers, openUrls, getDefaultBrowser,
-    readFromFile, writeToFile, getTester, logError, validateUrl
+    readFromFile, writeToFile, getTester, validateUrl
 } from './utils'
 
 const STASH_FILE = 'stash.json'
@@ -24,7 +24,7 @@ class UnStash extends Action {
             toBrowser = getFromToBrowsers(options.to, null, true)[1]
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
 
         let stashList
@@ -32,7 +32,7 @@ class UnStash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
         stashList = stashList || []
 
@@ -96,7 +96,7 @@ class UnStash extends Action {
             toBrowser = getFromToBrowsers(to, null, true)[1]
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
 
         let stashList
@@ -104,7 +104,7 @@ class UnStash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
         stashList = stashList || []
 

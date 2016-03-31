@@ -2,7 +2,7 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    getDefaultBrowser, getBrowser, getApp, getAppData, openUrl, validateUrl, theClipboard, logError
+    getDefaultBrowser, getBrowser, getApp, getAppData, openUrl, validateUrl, theClipboard
 } from './utils'
 
 
@@ -24,7 +24,7 @@ class Opener extends Action {
             options.in = options.in || getBrowser(browserType, null, getDefaultBrowser())[0]
         }
         catch (err) {
-            logError(err)
+            console.log(err)
             const opt = appName ? null : 'in'
             return this.previewOptionSelectsError(err, preview, opt)
         }

@@ -1,6 +1,6 @@
 
 import Preview from './preview'
-import { readFromFile, writeToFile, getUserDefaults, setUserDefaults, getTester } from './utils'
+import { readFromFile, writeToFile, userDefaults, getTester, isTrue } from './utils'
 
 
 class Action {
@@ -13,7 +13,7 @@ class Action {
         opts.forEach(opt => {
             if (!Array.isArray(opt)) { opt = [opt] }
             let [ optName, description, optTest, defaultValue, required, sanitizer ] = opt
-            let userDefaultValue = getUserDefaults(name, 'options', optName)
+            let userDefaultValue = userDefaults([name, 'options', optName].join('.'))
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.opts[optName] = {
                 nameTest: getTester(optName, optTest),
@@ -36,7 +36,7 @@ class Action {
         flags.forEach(flag => {
             if (!Array.isArray(flag)) { flag = [flag] }
             let [ flagName, description, flagTest, defaultValue ] = flag
-            let userDefaultValue = getUserDefaults(name, 'flags', flagName)
+            let userDefaultValue = userDefaults([name, 'flags', flagName].join('.'))
             defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
             this.flags[flagName] = {
                 nameTest: getTester(flagName, flagTest),
@@ -86,6 +86,7 @@ class Action {
         return preview.buildXML()
     }
 
+
     set() {
         const { set_flag, set_value } = this.getQueryOptions()
         if (!set_flag || !set_value) {
@@ -94,10 +95,10 @@ class Action {
             )
         }
 
-        const [flag, value] = setUserDefaults(this.name, 'flags', set_flag, set_value)
+        const value = userDefaults([[this.name, 'flags', set_flag].join('.'), isTrue(set_value)])
 
-        if (flag, value) {
-            return `Turned ${value} the flag ${(this.name + '.' + flag).toUpperCase()} by default`
+        if (value != null) {
+            return `Turned ${set_value} the flag ${(this.name + '.' + set_flag).toUpperCase()} by default`
         }
         else {
             return ''
@@ -358,11 +359,13 @@ class Action {
     }
 
     previewOptionSelectsError(err, preview, opt) {
+        console.log(err)
         const override = preview.getOverride(opt)
         preview.addError(this, {
             autocomplete: this.constructQueryString(override),
-            title: err,
-            subtitle: 'Press ENTER / TAB key to choose from a list.'
+            title: err.message,
+            subtitle: 'Press ENTER / TAB key to choose from a list.',
+            text_largetype: err.toString()
         })
         return preview.buildXML()
     }

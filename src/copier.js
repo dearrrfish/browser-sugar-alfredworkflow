@@ -2,7 +2,7 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    readFromFile, getApp, getAppData, theClipboard, logError, getTester
+    readFromFile, getApp, getAppData, theClipboard, getTester
 } from './utils'
 
 const FORMATS_FILE = 'formats.json'
@@ -26,7 +26,7 @@ class Copier extends Action {
             _app = getApp(options.from, { index: options.index })
         }
         catch (err) {
-            logError(err)
+            console.log(err)
             return this.previewOptionSelectsError(err, preview, 'from')
         }
 
@@ -108,7 +108,7 @@ class Copier extends Action {
                 formats = JSON.parse(readFromFile(FORMATS_FILE))
             }
             catch (err) {
-                logError(err)
+                console.log(err)
             }
             if (formats && formats[format]) {
                 formatString = formats[format]

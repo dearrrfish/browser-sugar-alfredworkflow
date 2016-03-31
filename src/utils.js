@@ -1,10 +1,15 @@
+
 ObjC.import('Foundation')
+
 const USER_HOME_FOLDER = ObjC.unwrap($.NSHomeDirectory())
 const WORKFLOW_CONFIG_FOLDER = `${USER_HOME_FOLDER}/.config/bs-alfredworkflow`
-const BROWSERS = {
-    safari: ['Safari', 'Webkit'],
-    chrome: ['Google Chrome', 'Google Chrome Canary', 'Chromium']
+const DEFAULT_BROWSERS = {
+    safari: ['Safari'],
+    chrome: ['Google Chrome']
 }
+let USER_DFEAULTS = null
+let BROWSERS = null
+
 
 const SystemEvents = Application('System Events')
 SystemEvents.includeStandardAdditions = true
@@ -12,23 +17,37 @@ const frontmostApp = () => SystemEvents.processes.whose({ frontmost: true })[0].
 
 const FileManager = $.NSFileManager.defaultManager
 
-let UserDefaults = null
 // ================================================================================================
 
-function getBrowser(name, browsers = Object.keys(BROWSERS), defaultBrowser) {
+function getAllBrowsers() {
+    if (!BROWSERS) {
+        BROWSERS = {}
+        const userBrowsers = userDefaults('browsers') || {}
+        console.log(JSON.stringify(userBrowsers))
+        Object.keys(DEFAULT_BROWSERS).forEach(b => {
+            BROWSERS[b] = userBrowsers[b] || DEFAULT_BROWSERS[b]
+        })
+    }
+    return BROWSERS
+}
+
+function getBrowser(name, browserTypes, defaultBrowser) {
+    const browsers = getAllBrowsers()
+    browserTypes = browserTypes || Object.keys(browsers)
+
     name = name || defaultBrowser
     if (!name) { return [] }
 
-    if (!Array.isArray(browsers)) { browsers = [ browsers ] }
+    if (!Array.isArray(browserTypes)) { browserTypes = [ browserTypes ] }
     name = name.toLowerCase()
 
-    if (BROWSERS[name] && BROWSERS[name].length) {
-        return [ BROWSERS[name][0], name ]
+    if (browsers[name] && browsers[name].length) {
+        return [ browsers[name][0], name ]
     }
 
-    for (let type of browsers) {
-        if (!BROWSERS[type]) { continue }
-        for (let browser of BROWSERS[type]) {
+    for (let type of browserTypes) {
+        if (!browsers[type]) { continue }
+        for (let browser of browsers[type]) {
             if (name === browser.toLowerCase()) {
                 return [ browser, type ]
             }
@@ -491,32 +510,51 @@ function writeToFile(content, file, absoulte = false) {
 }
 
 
-function getUserDefaults(name, type, key) {
-    if (!UserDefaults) {
-        try {
-            UserDefaults = JSON.parse(readFromFile('config.json'))
-        }
-        catch (err) {
-           console.log('Failed to read user config file.', err)
-        }
-        UserDefaults = UserDefaults || {}
+function userDefaults(...pathValuePairs) {
+    if (!USER_DFEAULTS) {
+        try { USER_DFEAULTS = JSON.parse(readFromFile('config.json')) }
+        catch (err) { console.log('Failed to read user config file.', err) }
     }
+    USER_DFEAULTS = USER_DFEAULTS || {}
+    if (!pathValuePairs.length) { return USER_DFEAULTS }
 
-    const value = ((UserDefaults[name] || {})[type] || {})[key]
-    return value
-}
+    let modified = false
+    const values = pathValuePairs.map(pair => {
+        if (!Array.isArray(pair)) { pair = [pair] }
+        let [ path, value ] = pair
+        if (typeof path === 'string') { path = path.split('.') }
+        if (!Array.isArray(path) || !path[0]) { return null }
 
-function setUserDefaults(name, type, key, value) {
-    const oldValue = getUserDefaults(name, type, key)
-    if (oldValue !== value) {
-        UserDefaults[name] = UserDefaults[name] || {}
-        UserDefaults[name][type] = UserDefaults[name][type] || {}
-        UserDefaults[name][type][key] = type === 'flags' ? isTrue(value) : value
+        let v = null, obj = USER_DFEAULTS
+        for (let i in path) {
+            const p = path[i]
+            v = obj[p]
 
-        writeToFile(UserDefaults, 'config.json')
-        return [key, value]
-    }
-    return []
+            if (i == path.length-1) {
+                if (value === null) { delete obj[p] }
+                else if (value !== undefined && v !== value) {
+                    obj[p] = value
+                    v = value
+                    modified = true
+                }
+            }
+            else if (v == null) {
+                if (value === undefined) { break }
+                else { obj[p] = {}; obj = obj[p] }
+            }
+            else if (typeof v !== 'object') {
+                v = null; break
+            }
+            else { obj = obj[p] }
+
+        }
+
+        return v
+    })
+
+    if (modified) { writeToFile(USER_DFEAULTS, 'config.json') }
+
+    return values.length === 1 ? values[0] : values
 }
 
 
@@ -583,17 +621,28 @@ function isTrue(val) {
     }
 }
 
-function logError(err) {
-    console.log(`${err.toString()} [${err.line}:${err.column}] ${err.stack}`)
+Error.prototype.toString = function(noDetails) {
+    const obj = Object(this)
+    if (obj !== this) { throw new TypeError() }
+
+    const props = []
+    if (this.name === undefined) { props.push('Error') } else { props.push(String(this.name)) }
+    if (this.message !== undefined) { props.push(String(this.message)) }
+
+    if (!noDetails) {
+        props.push(`[${String(this.line)}-${String(this.column)}] ${String(this.stack)}`)
+    }
+
+    return props.join(': ')
 }
 
+
 export {
-    BROWSERS, getBrowser, getFromToBrowsers,
+    getAllBrowsers, getBrowser, getFromToBrowsers,
     SystemEvents, frontmostApp, theClipboard,
     getDefaultBrowser, getApp, getAppData,
     openUrl, openUrls, validateUrl, closeTab,
-    readFromFile, writeToFile,
-    getUserDefaults, setUserDefaults,
-    getTester, isTrue, logError
+    readFromFile, writeToFile, userDefaults,
+    getTester, isTrue
 }
 

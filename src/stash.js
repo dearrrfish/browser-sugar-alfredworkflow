@@ -2,7 +2,7 @@
 import Preview from './preview'
 import Action from './action'
 import {
-    getFromToBrowsers, getAppData, closeTab, readFromFile, writeToFile, logError
+    getFromToBrowsers, getAppData, closeTab, readFromFile, writeToFile
 } from './utils'
 
 const STASH_FILE = 'stash.json'
@@ -88,7 +88,7 @@ class Stash extends Action {
             stashList = JSON.parse(readFromFile(STASH_FILE))
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
         stashList = stashList || []
 

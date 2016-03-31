@@ -1,6 +1,6 @@
 
 import Items from './workflow'
-import { BROWSERS, getApp, getTester, isTrue, logError, readFromFile } from './utils'
+import { getAllBrowsers, getApp, getTester, isTrue, readFromFile } from './utils'
 
 const FORMATS_FILE = 'formats.json'
 
@@ -94,6 +94,7 @@ class Preview extends Items {
     }
 
     addBrowsers(action, filter, opt, insertBefore) {
+        const BROWSERS = getAllBrowsers()
         Object.keys(BROWSERS).forEach(b => {
             const firstBrowser = BROWSERS[b][0]
             if (filter) {
@@ -182,7 +183,7 @@ class Preview extends Items {
             formats = JSON.parse(readFromFile(FORMATS_FILE))
         }
         catch (err) {
-            logError(err)
+            console.log(err)
         }
         formats = formats || {}
 
