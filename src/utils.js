@@ -178,6 +178,8 @@ function getAppData(appName, clips = new Set(), { index, appData, stringify } = 
     ] = (appData || getApp(appName, { index }))
     appName = app.name()
 
+    data.appName = appName
+
     clips = new Set(clips)
 
     if (clips.has('browserType')) {

@@ -115,17 +115,18 @@ class Copier extends Action {
             }
         }
 
+
         if (index === 'all') {
             clips.delete('tabs')    // `tabs` flag is unavailable here
             const extraClips = new Set(['selection', 'markdown'].filter(f => clips.has(f)))
             clips = Array.from(clips)
 
-            let { tabs } = getAppData(from, ['tabs'])
+            let { appName, tabs } = getAppData(from, ['tabs'])
             tabs = tabs || []
             const text = tabs.map(({ url, title, index }) => {
                 let data = { url, title }
                 if (extraClips.size) {
-                    const extraData = getAppData(from, extraClips, { index })
+                    const extraData = getAppData(appName, extraClips, { index })
                     data = Object.assign(data, extraData)
                 }
 
@@ -134,7 +135,7 @@ class Copier extends Action {
             }).join('\n')
 
             theClipboard(text)
-            return `Copied ${clips.join(',').toUpperCase()} from all tabs in ${from}`
+            return `Copied ${clips.join(',').toUpperCase()} from all tabs in ${appName}`
 
         }
         else {
@@ -143,7 +144,7 @@ class Copier extends Action {
             const text = this.formatText(formatString, clips, data)
 
             theClipboard(text)
-            return `Copied ${clips.join(',').toUpperCase()} from ${from}.`
+            return `Copied ${clips.join(',').toUpperCase()} from ${data.appName}.`
         }
 
 

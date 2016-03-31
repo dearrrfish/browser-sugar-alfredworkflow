@@ -77,7 +77,7 @@ class Switcher extends Action {
             openUrls(urls, toBrowser, { noValidation: true })
             if (!clone) { closeTab(fromBrowser, { closeWindow: true })}
 
-            return `${from} >> ${to} | ${urls.length} tabs`
+            return `${fromBrowser} >> ${toBrowser} | ${urls.length} tabs`
 
         }
         else {
@@ -85,7 +85,7 @@ class Switcher extends Action {
             openUrl(url, toBrowser, { dedupe })
             if (!clone) { closeTab(fromBrowser, { index }) }
 
-            return `${from} >> ${to} | ${title}`
+            return `${fromBrowser} >> ${toBrowser} | ${title}`
         }
 
     }
