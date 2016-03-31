@@ -91,6 +91,7 @@ Set Default Flags: `bset open`
 
 - ***dedupe*** - Deduplicate URL in target browser before opening a new tab
   - Use action modifier `alt` can open all extracted URLs
+- ***search*** - Fallback to search when no URL was detected.
 
 #### Options:
 

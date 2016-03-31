@@ -3,7 +3,7 @@ import Preview from './preview'
 import Action from './action'
 import {
     getBrowser, getFromToBrowsers, openUrls, getDefaultBrowser,
-    readFromFile, writeToFile, getTester, logError
+    readFromFile, writeToFile, getTester, logError, validateUrl
 } from './utils'
 
 const STASH_FILE = 'stash.json'
@@ -114,8 +114,16 @@ class UnStash extends Action {
         }
 
         const { name, appName, timestamp, tabs } = stash
-        const urls = tabs.map(([url]) => decodeURIComponent(url))
+        const urls = []
         const target = toBrowser || appName
+        const sameBrowser = target === appName
+
+        tabs.forEach(([url]) => {
+            url = decodeURIComponent(url)
+            if (!sameBrowser) { url = validateUrl(url) }
+            if (url) { urls.push(url) }
+        })
+
         openUrls(urls, target, { newWindow: newwindow, noValidation: true })
 
         if (!clone) {
@@ -123,7 +131,7 @@ class UnStash extends Action {
             writeToFile(stashList, STASH_FILE)
         }
 
-        return `Unstashed ${tabs.length} tabs in ${target} << [ ${decodeURIComponent(name)} ]`
+        return `Unstashed ${urls.length} tabs in ${target} << [ ${decodeURIComponent(name)} ]`
 
     }
 

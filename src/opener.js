@@ -51,8 +51,13 @@ class Opener extends Action {
             return preview.buildXML()
         }
         else {
-            preview.addError(this, {
-                title: 'No valid URL was detected.',
+            const query = this.constructQueryString({
+                flags: ['search'],
+                notes: text
+            })
+            preview.add({
+                arg: query,
+                title: 'No valid URL was detected. Search instead?',
                 subtitle: `Origin text: ${('' + text).replace(/\r?\n/g, ' ')}`,
                 text_largetype: text
             })
@@ -63,15 +68,21 @@ class Opener extends Action {
     }
 
     run() {
-        const { dedupe } = this.getQueryFlags(true)
+        const { dedupe, search } = this.getQueryFlags(true)
         const options = this.getQueryOptions({ allowEmpty: false, sanitizer: true })
 
         let notes = this.getQueryNotes()
         notes = notes || getAppData(undefined, ['selection']).selection || theClipboard()
 
-        let [ url, appName ] = openUrl(notes, options.in, { dedupe })
+        let [ url, appName ] = openUrl(notes, options.in, { dedupe, fallbackSearch: search })
 
-        return `Opened URL in ${appName}: ${url}`
+        if (url) {
+            return `Opened URL in ${appName}: ${url}`
+        }
+        else {
+            return `Search in ${appName}: ${notes}`
+        }
+
     }
 
 }
@@ -86,7 +97,8 @@ export default new Opener({
     ],
     // flag: [ name, test, default]
     flags: [
-        ['dedupe', 'Deduplicate URLs in target browser before open new tab', 1, true]
+        ['dedupe', 'Deduplicate URLs in target browser before open new tab', 1, true],
+        ['search', 'Search text instead', 1, true]
     ]
 })
 

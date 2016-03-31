@@ -292,12 +292,38 @@ function closeTab(appName, { closeWindow = false, index } = {}) {
 }
 
 
-function openUrl(_url, target, { activate = true, dedupe, newTab = true, background, appData, noValidation } = {}) {
-    let url = _url
-    if (!noValidation) {
-        url = validateUrl(_url)
-        if (!url) { throw new Error(`No valid URL was detected in text: ${_url}`) }
-        if (!/^https?:\/\//i.test(url)) { url = 'http://' + url }
+function _searchByText(text) {
+    const clipboardBackup = theClipboard()
+    theClipboard(text)
+
+    delay(0.1)
+    SystemEvents.keystroke('l', { using: 'command down' })  // Focus onto address bar
+    delay(0.1)
+    SystemEvents.keystroke('v', { using: 'command down' })  // Paste text
+    delay(0.1)
+    SystemEvents.keyCode(36)     // Press Enter
+
+    theClipboard(clipboardBackup)
+}
+
+
+function openUrl(_url, target = frontmostApp(), {
+    activate = true,
+    dedupe,
+    newTab = true,
+    background,
+    appData,
+    noValidation,
+    fallbackSearch,
+} = {}) {
+
+    let url = noValidation ? _url : validateUrl(_url)
+    if (!noValidation && typeof url === 'string' && !/^https?:\/\//i.test(url)) {
+        url = 'http://' + url
+    }
+
+    if (!url && !fallbackSearch) {
+        throw new Error(`No valid URL was detected in text: ${_url}`)
     }
 
     if (!appData) {
@@ -311,13 +337,15 @@ function openUrl(_url, target, { activate = true, dedupe, newTab = true, backgro
     // create new window if no valid ones
     if (!windows.length) {
         (browserType === 'safari') ? app.Document().make() : app.Window().make()
-        app.windows[0].tabs[0].url = url
+        //delay(0.1)
+        if (url) { app.windows[0].tabs[0].url = url }
+        else if (fallbackSearch) { _searchByText(_url) }
         return [url, appName]
     }
 
     let exists = false
 
-    if (dedupe) {
+    if (url && dedupe) {
         windows.some((win) => {
             win.tabs().some((tab, i) => {
                 //console.log(tab.url(), ' ??? ', url)
@@ -341,7 +369,15 @@ function openUrl(_url, target, { activate = true, dedupe, newTab = true, backgro
     exists = exists || [windows[0]]
     let [win, tab, tabIndex] = exists
 
-    if (!tab) {
+    if (!url) {
+        if (fallbackSearch) {
+            tab = app.Tab()
+            tabIndex = win.tabs.push(tab)
+            if (browserType === 'safari') { win.currentTab = tab }
+            _searchByText(_url)
+        }
+    }
+    else if (!tab) {
         if (newTab) {
             tab = app.Tab({ url: url })
             tabIndex = win.tabs.push(tab)
@@ -361,7 +397,6 @@ function openUrl(_url, target, { activate = true, dedupe, newTab = true, backgro
             win.activeTabIndex = tabIndex
         }
     }
-
     // always bring window to front within app
     win.index = 1
 
