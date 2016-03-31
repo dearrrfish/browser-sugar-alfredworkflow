@@ -1,7 +1,8 @@
 
 import Items from './workflow'
-import { BROWSERS, getApp, getTester, isTrue } from './utils'
+import { BROWSERS, getApp, getTester, isTrue, logError, readFromFile } from './utils'
 
+const FORMATS_FILE = 'formats.json'
 
 const PRESETS = {
     icons: {
@@ -46,6 +47,7 @@ class Preview extends Items {
                 //case 'actions'            : this.addActions(data.actions, filter, opt, 999); break
                 case 'action_flags'       : this.addActionFlags(action, filter, opt, 999); break
                 case 'action_flag_values' : this.addActionFlagValues(action, data.flag, filter, opt, 999); break
+                case 'textformat_presets' : this.addTextFormatPresets(action, filter, opt, 999); break
 
             }
         })
@@ -171,6 +173,47 @@ class Preview extends Items {
                 icon         : `actionflagvalue_${isTrue(defaultValue) === isTrue(v) ? 'checked' : 'unchecked'}.png`
             }, insertBefore)
         })
+    }
+
+
+    addTextFormatPresets(action, filter, opt, insertBefore) {
+        let formats
+        try {
+            formats = JSON.parse(readFromFile(FORMATS_FILE))
+        }
+        catch (err) {
+            logError(err)
+        }
+        formats = formats || {}
+
+        Object.keys(formats).forEach(f => {
+            const formatString = formats[f]
+            if (filter) {
+                const tester = getTester(f, 'fuzzy_i')
+                if (!tester(filter)) { return }
+            }
+
+            const _type = `textformat_${f}`
+            const query = action.constructQueryString(this.getOverride(opt, f))
+            this.add({
+                _type,
+                uid: _type,
+                valid: 'no',
+                autocomplete: query,
+                title: f,
+                subtitle: formatString.replace(/[\r\n]/g, '⏎'),
+                //icon: 'textformat.png'
+            }, insertBefore)
+        })
+
+        if (!this.length()) {
+            const query = action.constructQueryString(this.getOverride(opt))
+            this.addError(action, {
+                autocomplete: query,
+                title: `No matched text formatting preset was found for '${filter || ''}'`,
+                subtitle: 'Press ENTER / TAB to choose from a list'
+            })
+        }
     }
 
 

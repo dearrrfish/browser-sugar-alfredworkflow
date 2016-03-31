@@ -1,7 +1,9 @@
 
 import Preview from './preview'
 import Action from './action'
-import { readFromFile, getApp, getAppData, theClipboard, strReplace, logError } from './utils'
+import {
+    readFromFile, getApp, getAppData, theClipboard, logError, getTester
+} from './utils'
 
 const FORMATS_FILE = 'formats.json'
 
@@ -11,7 +13,12 @@ class Copier extends Action {
         const preview = new Preview()
         const options = this.getQueryOptions()
 
+        // validate browser options
         let xml = this.previewOptionSelects(['frontmost', 'browsers'], preview, options, ['from'])
+        if (xml) { return xml }
+
+        // validate format preset options
+        xml = this.previewOptionSelects(['textformat_presets'], preview, options, ['format'])
         if (xml) { return xml }
 
         let _app
