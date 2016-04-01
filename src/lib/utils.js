@@ -23,7 +23,7 @@ function getAllBrowsers() {
     if (!BROWSERS) {
         BROWSERS = {}
         const userBrowsers = userDefaults('browsers') || {}
-        console.log(JSON.stringify(userBrowsers))
+        //console.log(JSON.stringify(userBrowsers))
         Object.keys(DEFAULT_BROWSERS).forEach(b => {
             BROWSERS[b] = userBrowsers[b] || DEFAULT_BROWSERS[b]
         })

@@ -4,7 +4,6 @@ import { minify } from 'uglify-js'
 
 
 export default {
-    entry: 'src/main.js',
     format: 'cjs',
     plugins: [
         babel({
@@ -21,5 +20,4 @@ export default {
             }
         }, minify)
     ],
-    dest: 'dist/main.min.js'
 }

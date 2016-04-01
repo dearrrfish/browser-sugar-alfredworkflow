@@ -1,6 +1,6 @@
 
 import runner from './lib/runner'
-import action from './lib/unstasher'
+import action from './lib/switcher'
 
 run(false)  // rollupjs build tool hack
 

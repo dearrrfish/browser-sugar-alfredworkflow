@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/.bin/rollup -c rollup.config.build.js",
-    "make": "./node_modules/.bin/rollup -c rollup.config.js"
+    "build": "./build.sh rollup.config.build.js",
+    "make": "./build.sh rollup.config.js"
   },
   "repository": {
     "type": "git",
