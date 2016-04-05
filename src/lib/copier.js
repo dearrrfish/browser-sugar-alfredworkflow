@@ -171,13 +171,13 @@ class Copier extends Action {
 export default new Copier({
     name: 'copy',
     title: 'Super Copier',
-    // opt: [ name, test, default, required, sanitizer]
+    // opt: [ name, description, test, default, required, sanitizer, noset]
     opts: [
         ['from', 'Source application to copy data from', 1],
-        ['index', 'Tab index number if available', 1, null, false, ['all', Number.parseInt]],
+        ['index', 'Tab index number if available', 1, null, false, ['all', Number.parseInt], true],
         ['format', 'Preset text style when constructing copied data', 2]
     ],
-    // flag: [ name, test, default]
+    // flag: [ name, description, test, default, noset]
     flags: [
         ['url', 'Copy URL', 1],
         ['title','Copy tab title or application name', 2],

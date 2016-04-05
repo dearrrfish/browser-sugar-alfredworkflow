@@ -96,13 +96,13 @@ class Switcher extends Action {
 export default new Switcher({
     name: 'switch',
     title: 'Switch Browser',
-    // opt: [ name, description, test, default, required, sanitizer]
+    // opt: [ name, description, test, default, required, sanitizer, noset]
     opts: [
         ['from', 'Source browser to switch tab(s) from', 1],
         ['to', 'Target browser to switch tabs(s) to', 1],
-        ['index', 'Tab index number', 1, null, false, ['all', Number.parseInt]]
+        ['index', 'Tab index number', 1, null, false, ['all', Number.parseInt], true]
     ],
-    // flag: [ name, test, default, description]
+    // flag: [ name, description, test, default, noset]
     flags: [
         ['clone', 'Keep original tab after switch', 1],
         ['dedupe', 'Deduplicate URL in target browser', 1, true],

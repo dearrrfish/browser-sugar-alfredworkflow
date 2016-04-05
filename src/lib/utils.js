@@ -531,7 +531,10 @@ function userDefaults(...pathValuePairs) {
             v = obj[p]
 
             if (i == path.length-1) {
-                if (value === null) { delete obj[p] }
+                if (value === null && v != null) {
+                    delete obj[p]
+                    modified = true
+                }
                 else if (value !== undefined && v !== value) {
                     obj[p] = value
                     v = value

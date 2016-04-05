@@ -106,11 +106,11 @@ class Stash extends Action {
 export default new Stash({
     name: 'stash',
     title: 'Stash Tabs',
-    // opt: [ name, test, default, required, sanitizer]
+    // opt: [ name, description, test, default, required, sanitizer, noset]
     opts: [
         ['from', 'Source browser to get list of tabs to stash', 1]
     ],
-    // flag: [ name, test, default]
+    // flag: [ name, description, test, default, noset]
     flags: [
         ['clone', 'Do not close tabs after saved to stash', 1]
     ]

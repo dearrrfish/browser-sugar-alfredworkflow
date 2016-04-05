@@ -91,11 +91,11 @@ class Opener extends Action {
 export default new Opener({
     name: 'open',
     title: 'Smart Opener',
-    // opt: [ name, test, default, required, sanitizer]
+    // opt: [ name, description, test, default, required, sanitizer, noset]
     opts: [
         ['in', 'Target browser to open URL(s) in', 1]
     ],
-    // flag: [ name, test, default]
+    // flag: [ name, description, test, default, noset]
     flags: [
         ['dedupe', 'Deduplicate URLs in target browser before open new tab', 1, true],
         ['search', 'Search text instead', 1, true]

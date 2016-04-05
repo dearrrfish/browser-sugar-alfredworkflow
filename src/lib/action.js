@@ -8,48 +8,55 @@ class Action {
     constructor({ name = '_unknown_', title = 'UNKNOWN', opts = [], flags = [] } = {}) {
         this.name = name
         this.title = title
+        // get testers
+        this.testName = getTester(this.name, 'strict_i')
+        this.fuzzyTestName = getTester(this.name, 'fuzzy_i')
+
+        this.flags = {}
+        flags.forEach(flag => {
+            if (!Array.isArray(flag)) { flag = [flag] }
+            let [ flagName, description, flagTest, defaultValue, noset ] = flag
+            if (!noset) {
+                const userValue = userDefaults([name, 'flags', flagName].join('.'))
+                if (userValue != null) { defaultValue = userValue }
+            }
+            this.flags[flagName] = {
+                nameTest: getTester(flagName, flagTest),
+                defaultValue,
+                description,
+                noset
+            }
+        })
 
         this.opts = {}
         opts.forEach(opt => {
             if (!Array.isArray(opt)) { opt = [opt] }
-            let [ optName, description, optTest, defaultValue, required, sanitizer ] = opt
-            let userDefaultValue = userDefaults([name, 'options', optName].join('.'))
-            defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
+            let [ optName, description, optTest, defaultValue, required, sanitizer, noset ] = opt
+            if (!noset) {
+                const userValue = userDefaults([name, 'options', optName].join('.'))
+                if (userValue != null) { defaultValue = userValue }
+            }
             this.opts[optName] = {
                 nameTest: getTester(optName, optTest),
                 defaultValue,
                 required,
                 sanitizer,
-                description
+                description,
+                noset
             }
         })
 
         // shared options to set defaults of action flags
-        this.opts.set_flag = {
-            nameTest: getTester('set_flag', 'same_i'),
+        this.opts.set_key = {
+            nameTest: getTester('set_key', 'strict_i'),
+            noset: true
         }
         this.opts.set_value = {
-            nameTest: getTester('set_value', 'same_i'),
+            nameTest: getTester('set_value', 'strict_i'),
+            noset: true
         }
 
-        this.flags = {}
-        flags.forEach(flag => {
-            if (!Array.isArray(flag)) { flag = [flag] }
-            let [ flagName, description, flagTest, defaultValue ] = flag
-            let userDefaultValue = userDefaults([name, 'flags', flagName].join('.'))
-            defaultValue = userDefaultValue != null ? userDefaultValue : defaultValue
-            this.flags[flagName] = {
-                nameTest: getTester(flagName, flagTest),
-                defaultValue,
-                description
-            }
-        })
-
         this.query = {}
-
-        // get testers
-        this.testName = getTester(this.name, 'strict_i')
-        this.fuzzyTestName = getTester(this.name, 'fuzzy_i')
 
     }
 
@@ -69,18 +76,26 @@ class Action {
 
     defaults() {
         const preview = new Preview()
+        const notes = this.getQueryNotes()
         const options = this.getQueryOptions()
-        options.set_flag = options.set_flag || ''
+        options.set_key = options.set_key || ''
         options.set_value = options.set_value || ''
 
-        let xml = this.previewOptionSelects(['action_flags'], preview, options, ['set_flag'])
+        let xml = this.previewOptionSelects(['action_flags', 'action_options'], preview, options, ['set_key'])
         if (xml) { return xml }
 
-        xml = this.previewOptionSelects(['action_flag_values'],
-                                        preview,
-                                        options,
-                                        ['set_value'],
-                                        { flag: options.set_flag })
+        const setType = this.getSetKeyType(options.set_key)
+        if (setType === 'flags') {
+            xml = this.previewOptionSelects(['action_flag_values'],
+                                            preview,
+                                            options,
+                                            ['set_value'],
+                                            { flag: options.set_key })
+        }
+        else if (setType === 'options') {
+            preview.addOptionItems(['action_option_value'], this, notes, null, { option: options.set_key })
+        }
+
         if (xml) { return xml }
 
         return preview.buildXML()
@@ -88,23 +103,49 @@ class Action {
 
 
     set() {
-        const { set_flag, set_value } = this.getQueryOptions()
-        if (!set_flag || !set_value) {
-            throw new Error(
-                `Incomplete options to set default value for ${this.name.toUpperCase()}`
-            )
+        const { set_key, set_value } = this.getQueryOptions()
+        const notes = this.getQueryNotes()
+        if (!set_key) {
+            throw new Error(`Missing option/flag name for ${this.name.toUpperCase()}`)
         }
 
-        const value = userDefaults([[this.name, 'flags', set_flag].join('.'), isTrue(set_value)])
+        const setType = this.getSetKeyType(set_key)
 
-        if (value != null) {
-            return `Turned ${set_value} the flag ${(this.name + '.' + set_flag).toUpperCase()} by default`
+        let setValue = null
+        if (setType === 'flags') {
+            setValue = isTrue(set_value)
+        }
+        else if (setType === 'options') {
+            setValue = notes || null
         }
         else {
-            return ''
+            throw new Error(
+                `Invalid option/flag '${set_key}' to customize for ${this.name.toUpperCase()}`
+            )
         }
+        const value = userDefaults([[this.name, setType, set_key].join('.'), setValue])
+
+        if (value == null) { return 'Custom default value of target option/flag does not exist.' }
+        if (setType === 'flags') {
+            return `Turned ${set_value} the flag ${this.name}.${set_key.toUpperCase()} by default`
+        }
+        else if (setType === 'options') {
+            if (setValue) {
+                return `Set default value of ${this.name}.${set_key.toUpperCase()}: ${setValue}`
+            }
+            else {
+                return `Clear default value of ${this.name}.${set_key.toUpperCase()}`
+            }
+        }
+
+        return ''
     }
 
+
+    getSetKeyType(key) {
+        return (this.opts[key] && !this.opts[key].noset) ? 'options' :
+               ((this.flags[key] && !this.flags[key].noset) ? 'flags' : null)
+    }
 
     getOptionName(name) {
         Object.keys(this.opts).some(k => {

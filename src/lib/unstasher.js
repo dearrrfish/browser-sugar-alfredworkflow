@@ -141,12 +141,12 @@ class UnStash extends Action {
 export default new UnStash({
     name: 'unstash',
     title: 'Un-Stash Tabs',
-    // opt: [ name, test, default, required, sanitizer, description]
+    // opt: [ name, description, test, default, required, sanitizer, noset]
     opts: [
         ['to', 'Target browser to unstash tabs to.', 1],
-        ['index', 'Tab index number', 1, null, false, Number.parseInt]
+        ['index', 'Tab index number', 1, null, false, Number.parseInt, true]
     ],
-    // flag: [ name, test, default, description]
+    // flag: [ name, description, test, default, noset]
     flags: [
         ['clone', 'Do not delete stash record after unstashed', 1, false],
         ['newwindow', 'Unstash tabs into new window', 1, true],

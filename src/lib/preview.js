@@ -42,12 +42,16 @@ class Preview extends Items {
         types = Array.isArray(types) ? types : [types]
         types.forEach(type => {
             switch (type) {
-                case 'frontmost'          : this.addFrontmostApp(action, filter, opt, 999); break
-                case 'browsers'           : this.addBrowsers(action, filter, opt, 999); break
+                case 'frontmost'            : this.addFrontmostApp(action, filter, opt, 999); break
+                case 'browsers'             : this.addBrowsers(action, filter, opt, 999); break
+
                 //case 'actions'            : this.addActions(data.actions, filter, opt, 999); break
-                case 'action_flags'       : this.addActionFlags(action, filter, opt, 999); break
-                case 'action_flag_values' : this.addActionFlagValues(action, data.flag, filter, opt, 999); break
-                case 'textformat_presets' : this.addTextFormatPresets(action, filter, opt, 999); break
+                case 'action_flags'         : this.addActionFlags(action, filter, opt, 999); break
+                case 'action_flag_values'   : this.addActionFlagValues(action, data.flag, filter, opt, 999); break
+                case 'action_options'       : this.addActionOptions(action, filter, opt, 999); break
+                case 'action_option_value'  : this.addActionOptionValue(action, data.option, filter, opt, 999); break
+
+                case 'textformat_presets'   : this.addTextFormatPresets(action, filter, opt, 999); break
 
             }
         })
@@ -135,7 +139,8 @@ class Preview extends Items {
 
     addActionFlags(action, filter, opt, insertBefore) {
         for (let flag in action.flags) {
-            const { nameTest, defaultValue, description } = action.flags[flag]
+            const { nameTest, defaultValue, description, noset } = action.flags[flag]
+            if (noset) { continue }
             if (filter && !nameTest(filter)) { continue }
 
             const override = this.getOverride(opt, flag)
@@ -146,7 +151,7 @@ class Preview extends Items {
                 valid        : 'no',
                 autocomplete : action.constructQueryString(override),
                 title        : flag,
-                subtitle     : `${action.name}/${flag}: ${description || ''}`,
+                subtitle     : description || '',
                 icon         : `actionflag_${isTrue(defaultValue) ? 'on' : 'off'}.png`,
             }
 
@@ -170,10 +175,65 @@ class Preview extends Items {
                 arg          : query,
                 //autocomplete : query,
                 title        : v,
-                subtitle     : `${action.name}/${flag}: ${description || ''}`,
+                subtitle     : description || '',
                 icon         : `actionflagvalue_${isTrue(defaultValue) === isTrue(v) ? 'checked' : 'unchecked'}.png`
             }, insertBefore)
         })
+    }
+
+
+    addActionOptions(action, filter, opt, insertBefore) {
+        for (let option in action.opts) {
+            const { nameTest, defaultValue, description, noset } = action.opts[option]
+            if (noset) { continue }
+            if (filter && !nameTest(filter)) { continue }
+
+            const _type = `actionoption_${option}`
+            let override = this.getOverride(opt, option)
+
+            const item = {
+                _type,
+                uid: _type,
+                valid: 'no',
+                autocomplete: action.constructQueryString(override),
+                title: `${option} [${defaultValue || 'None'}]`,
+                subtitle: description || '',
+            }
+
+            this.add(item, insertBefore)
+        }
+    }
+
+
+    addActionOptionValue(action, option, filter, opt, insertBefore) {
+        const optConfig = action.opts[option]
+
+        if (typeof optConfig === 'object') {
+            const {defaultValue, description} = optConfig
+            const _type = 'actionoption_value'
+            const item = {
+                _type,
+                uid: _type,
+                arg: action.constructQueryString(),
+                title: `${option}: ${filter}`,
+                subtitle: `${description}: ${defaultValue || 'None'} (Current)`
+            }
+
+            //if (!filter) { item.valid = 'no' }
+
+            this.add(item, insertBefore)
+        }
+        else {
+            const query = action.constructQueryString({
+                options: {set_key: ''},
+                notes: ''
+            })
+            this.addError(action, {
+                autocomplete: query,
+                title: `Invalid option of '${option}' for ${action.name.toUpperCase()}`,
+                subtitle: 'Press ENTER / TAB to choose from a list.'
+            }, insertBefore)
+        }
     }
 
 
